@@ -1,13 +1,13 @@
 #!/bin/bash
 set -e
-_where=`pwd`
+_where="$(pwd)"
 srcdir="$_where"
 
 if ! command -v sudo >/dev/null; then
   if command -v doas >/dev/null; then
-    sudo() { doas "$@"; }
+    _sudo() { doas "$@"; }
   elif command -v su >/dev/null; then
-    sudo() { su -c "$*"; }
+    _sudo() { su -c "$@"; }
   fi
 fi
 
@@ -29,22 +29,43 @@ plain() {
 
 ################### Config sourcing
 
+# Setup the main env, clean old values, and refresh
 if [[ -z "$SCRIPT" ]]; then
-  declare -p -x > current_env
+  rm "${_where}"/TKT_CONFIG
+  declare -p -x > "$_where"/TKT_CONFIG
+else
+  rm "${_where}"/TKT_CONFIG
 fi
 
 source customization.cfg
 
+# Source the user config file from '~/.config/TKT.cfg'
 if [ -e "$_EXT_CONFIG_PATH" ]; then
   msg2 "External configuration file $_EXT_CONFIG_PATH will be used and will override customization.cfg values."
   source "$_EXT_CONFIG_PATH"
 fi
 
-. current_env
+# Logic to override some settings for GHCI builds
+if [ "$_IS_GHCI" = "true" ]; then
+  export _menuconfig="false" # We're non-interactive
+  export _kernel_on_diet="true" # Github has size limits sadly
+  export _openrgb="true" # If it's a kernel for the masses <.<
+  export _install_after_building="no" # Well, now why would you install a kernel inside a container?
+  export _processor_opt="x86-64" # x86_64 or go home
+  export _git_mirror="gregkh"
+  export _debugdisable="true" # Reduce weight of kernel
+  export _noccache="true" # Docker containers can't reuse ccache anyways, save space
+  export _STRIP="true" # Save more space
+  export _nofallback="false" # Prevents GHCI from failing out
+  export _logging_use_script="no" # GHCI has good logging
+fi
+
+# Kernel prep work
+source "$_where"/TKT_CONFIG
 source kconfigs/prepare
 _build_dir="$_kernel_work_folder_abs/.."
-export KCPPFLAGS
-export KCFLAGS
+export KCPPFLAGS="-Wno-error"
+export KCFLAGS="-Wno-error"
 
 # Use custom compiler paths if defined
 if [[ "$_compiler_name" =~ llvm ]] && [ -n "${CUSTOM_LLVM_PATH}" ]; then
@@ -53,10 +74,11 @@ elif [ -n "${CUSTOM_GCC_PATH}" ]; then
   PATH="${CUSTOM_GCC_PATH}/bin:${CUSTOM_GCC_PATH}/lib:${CUSTOM_GCC_PATH}/include:${PATH}"
 fi
 
+# Set make jobs
 if [ "$_force_all_threads" = "true" ]; then
-  _thread_num=`nproc`
+  _thread_num="$(nproc)"
 else
-  _thread_num=`expr \`nproc\` / 2`
+  _thread_num="$(($(nproc) / 2))"
   if [ "$_thread_num" = "0" ]; then
     _thread_num=1
   fi
@@ -78,67 +100,71 @@ _distro_prompt() {
 }
 
 _install_dependencies() {
-  _base_deps="bash bc bison ccache cmake cpio curl flex git kmod lz4 make patchutils perl python3 python3-pip rsync sudo tar time wget zstd"
-  _clang_deps="clang lld llvm"
-  _deb_common_clang="clang-format clang-tidy clang-tools"
-  _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-14-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
-  _rpm_common="${_base_deps} dwarves gcc-c++ gawk hostname ncurses-devel libdw-devel libelf-devel libnuma-devel libopenssl-devel libudev-devel openssl openssl-devel python3-devel rpm-build rpmdevtools xz zstd"
-  _fedora_common="${_rpm_common} elfutils-devel fedora-packager fedpkg pesign numactl-devel openssl-devel-engine perl-devel perl-generators qt5-qtbase-devel"
-  _suse_common="${_rpm_common} awk kernel-source kernel-syms libqt5-qtbase-common-devel perl perl-ExtUtils-MakeMaker systemd-devel python311-devel python311-pip"
-  _slack_common="${_base_deps} binutils brotli cyrus-sasl diffutils dwarves elfutils fakeroot fakeroot-ng file gc gcc gcc-g++ gcc-gcobol gcc-gdc gcc-gfortran gcc-gm2 gcc-gnat gcc-go gcc-objc gcc-rust glibc git guile gzip kernel-headers libedit libelf libxml2 lzop m4 ncurses nghttp2 nghttp3 openssl perl schedtool spirv-llvm-translator xxHash xz"
-  _void_common="${_base_deps} base-devel docbook-xsl elfutils-devel fakeroot gcc gnupg graphviz liblz4-devel lz4 lzop m4 ncurses openssl-devel pahole patch pkg-config schedtool xtools xmlto xz"
+  if [ "$_IS_GHCI" = "true" ]; then
+    msg2 "Skipping useless steps for GHCI builds"
+  else
+    _base_deps="bash bc bison ccache cmake cpio curl flex git kmod lz4 make patchutils perl python3 python3-pip rsync _sudo tar time wget zstd"
+    _clang_deps="clang lld llvm"
+    _deb_common_clang="clang-format clang-tidy clang-tools"
+    _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-14-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
+    _rpm_common="${_base_deps} dwarves gcc-c++ gawk hostname ncurses-devel libdw-devel libelf-devel libnuma-devel libopenssl-devel libudev-devel openssl openssl-devel python3-devel rpm-build rpmdevtools xz zstd"
+    _fedora_common="${_rpm_common} elfutils-devel fedora-packager fedpkg pesign numactl-devel openssl-devel-engine perl-devel perl-generators qt5-qtbase-devel"
+    _suse_common="${_rpm_common} awk kernel-source kernel-syms libqt5-qtbase-common-devel perl perl-ExtUtils-MakeMaker systemd-devel python311-devel python311-pip"
+    _slack_common="${_base_deps} binutils brotli cyrus-sasl diffutils dwarves elfutils fakeroot fakeroot-ng file gc gcc gcc-g++ gcc-gcobol gcc-gdc gcc-gfortran gcc-gm2 gcc-gnat gcc-go gcc-objc gcc-rust glibc git guile gzip kernel-headers libedit libelf libxml2 lzop m4 ncurses nghttp2 nghttp3 openssl perl schedtool spirv-llvm-translator xxHash xz"
+    _void_common="${_base_deps} base-devel docbook-xsl elfutils-devel fakeroot gcc gnupg graphviz liblz4-devel lz4 lzop m4 ncurses openssl-devel pahole patch pkg-config schedtool xtools xmlto xz"
 
-  if [ "$_distro" = "Debian" ]; then
-    sudo apt update
-    msg2 "Installing dependencies for $_distro"
-    if [[ "$_compiler_name" == *llvm* ]]; then
-      sudo apt install -y ${_deb_common} ${_deb_common_clang} ${_clang_deps}
-    else
-      sudo apt install -y ${_deb_common}
-    fi
+    if [ "$_distro" = "Debian" ]; then
+      _sudo apt update
+      msg2 "Installing dependencies for $_distro"
+      if [[ "$_compiler_name" == *llvm* ]]; then
+        _sudo apt install -y "${_deb_common}" "${_deb_common_clang}" "${_clang_deps}"
+      else
+        _sudo apt install -y "${_deb_common}"
+      fi
 
-  elif [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Mint" ]; then
-    sudo apt update
-    msg2 "Installing dependencies for $_distro"
-    if [[ "$_compiler_name" == *llvm* ]]; then
-      sudo apt install -y ${_deb_common} ${_deb_common_clang} ${_clang_deps} liblz4-dev libxxhash-dev software-properties-common
-    else
-      sudo apt install -y ${_deb_common} liblz4-dev libxxhash-dev software-properties-common
-    fi
+    elif [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Mint" ]; then
+      _sudo apt update
+      msg2 "Installing dependencies for $_distro"
+      if [[ "$_compiler_name" == *llvm* ]]; then
+        _sudo apt install -y "${_deb_common}" "${_deb_common_clang}" "${_clang_deps}" liblz4-dev libxxhash-dev software-properties-common
+      else
+        _sudo apt install -y "${_deb_common}" liblz4-dev libxxhash-dev software-properties-common
+      fi
 
-  elif [ "$_distro" = "Fedora" ]; then
-    sudo dnf update -y
-    msg2 "Installing dependencies for $_distro"
-    if [[ "$_compiler_name" == *llvm* ]]; then
-      sudo dnf install -y --skip-unavailable ${_fedora_common} ${_clang_deps}
-    else
-      sudo dnf install -y --skip-unavailable ${_fedora_common}
-    fi
+    elif [ "$_distro" = "Fedora" ]; then
+      _sudo dnf update -y
+      msg2 "Installing dependencies for $_distro"
+      if [[ "$_compiler_name" == *llvm* ]]; then
+        _sudo dnf install -y --skip-unavailable "${_fedora_common}" "${_clang_deps}"
+      else
+        _sudo dnf install -y --skip-unavailable "${_fedora_common}"
+      fi
 
-  elif [ "$_distro" = "Suse" ]; then
-    sudo zypper refresh
-    msg2 "Installing dependencies for $_distro"
-    if [[ "$_compiler_name" == *llvm* ]]; then
-      sudo zypper install -y ${_suse_common} ${_clang_deps}
-    else
-      sudo zypper install -y ${_suse_common}
-    fi
+    elif [ "$_distro" = "Suse" ]; then
+      _sudo zypper refresh
+      msg2 "Installing dependencies for $_distro"
+      if [[ "$_compiler_name" == *llvm* ]]; then
+        _sudo zypper install -y "${_suse_common}" "${_clang_deps}"
+      else
+        _sudo zypper install -y "${_suse_common}"
+      fi
 
-  elif [ "$_distro" = "Void" ]; then
-    msg2 "Installing dependencies for $_distro"
-    if [[ "$_compiler_name" == *llvm* ]]; then
-      sudo xbps-install -Sy ${_void_common} ${_clang_deps}
-    else
-      sudo xbps-install -Sy ${_void_common}
-    fi
+    elif [ "$_distro" = "Void" ]; then
+      msg2 "Installing dependencies for $_distro"
+      if [[ "$_compiler_name" == *llvm* ]]; then
+        _sudo xbps-install -Sy "${_void_common}" "${_clang_deps}"
+      else
+        _sudo xbps-install -Sy "${_void_common}"
+      fi
 
-  elif [ "$_distro" = "Slackware" ]; then
-    sudo slackpkg update
-    msg2 "Installing dependencies for $_distro"
-    if [[ "$_compiler_name" == *llvm* ]]; then
-      sudo slackpkg -batch=on -default_answer=y install ${_slack_common} ${_clang_deps} || true
-    else
-      sudo slackpkg -batch=on -default_answer=y install ${_slack_common} || true
+    elif [ "$_distro" = "Slackware" ]; then
+      _sudo slackpkg update
+      msg2 "Installing dependencies for $_distro"
+      if [[ "$_compiler_name" == *llvm* ]]; then
+        _sudo slackpkg -batch=on -default_answer=y install "${_slack_common}" "${_clang_deps}" || true
+      else
+        _sudo slackpkg -batch=on -default_answer=y install "${_slack_common}" || true
+      fi
     fi
   fi
 }
@@ -200,27 +226,27 @@ _gen_kern_name() {
   # Generate kernel name once, re-used everywhere
   _kernelname="${_basekernel}.${_sub}-${_kernel_flavor}"
   _kernelname_rpm="${_basekernel}.${_sub}-${_kernel_flavor//-/_}"
-  }
+}
 
-  # Condense repeated make flags
-  _make() {
+# Condense repeated make flags
+_make() {
     if [ "$1" = "verbose" ]; then
-      time make V=2 ${compiler_opt} -j ${_thread_num} "$@"
+      time make V=2 "${compiler_opt}" -j "${_thread_num}" "$@"
     else
-      time make ${compiler_opt} -j ${_thread_num} "$@"
+      time make "${compiler_opt}" -j "${_thread_num}" "$@"
     fi
-  }
+}
 
-  # Copy winesync header if present
-  _winesync_copy() {
+# Copy winesync header if present
+_winesync_copy() {
     if [ -e "${_where}/winesync.rules" ]; then
-      sudo mkdir -p /usr/include/linux/
-      sudo cp "$_kernel_work_folder_abs"/include/uapi/linux/winesync.h /usr/include/linux/winesync.h
+      _sudo mkdir -p /usr/include/linux/
+      _sudo cp "$_kernel_work_folder_abs"/include/uapi/linux/winesync.h /usr/include/linux/winesync.h
     fi
-  }
+}
 
-  # Make versioned output dir and move artifacts in
-  _move_artifacts() {
+# Make versioned output dir and move artifacts in
+_move_artifacts() {
     local ext="$1"
 
     if [[ "$_distro" =~ ^(Fedora|Suse)$ ]]; then
@@ -246,12 +272,12 @@ _gen_kern_name() {
     else
       mv "${files[@]}" "$_where/${_kernelname}/"
     fi
-  }
+}
 
-  # Prompt install confirm
-  _confirm_install() {
+# Prompt install confirm
+_confirm_install() {
     if [[ "$_install_after_building" = "prompt" ]]; then
-      read -p "Do you want to install the new Kernel ? Y/[n]: " _install
+      read -rp "Do you want to install the new Kernel ? Y/[n]: " _install
     fi
 
     if [[ "$_install_after_building" =~ ^(Y|y|Yes|yes)$ || "$_install" =~ ^(Y|y|Yes|yes)$ ]]; then
@@ -259,71 +285,87 @@ _gen_kern_name() {
     else
       return 1
     fi
-  }
+}
 
-  #  initramfs + GRUB2
-  _regen_boot() {
+#  initramfs + GRUB2
+_regen_boot() {
+  if [ "$_IS_GHCI" = "true" ]; then
+    msg2 "Skipping useless steps for GHCI builds"
+  else
     msg2 "Creating initramfs"
 
-  # Probe if dracut is available
-  if command -v dracut >/dev/null 2>&1; then
-      use_dracut=true
-  else
-      use_dracut=false
-  fi
+    # Probe if dracut is available
+    if command -v dracut >/dev/null 2>&1; then
+        export use_dracut=true
+    else
+        export use_dracut=false
+    fi
 
-  # Probe if mkinitcpio is available
-  if command -v mkinitcpio >/dev/null 2>&1; then
-      use_mkinitcpio=true
-  else
-      use_mkinitcpio=false
-  fi
+    # Probe if mkinitcpio is available
+    if command -v mkinitcpio >/dev/null 2>&1; then
+        export use_mkinitcpio=true
+    else
+        export use_mkinitcpio=false
+    fi
 
-  # Probe if update-initramfs is available
-  if command -v update-initramfs >/dev/null 2>&1; then
-      use_update_initramfs=true
-  else
-      use_update_initramfs=false
-  fi
+    # Probe if update-initramfs is available
+    if command -v update-initramfs >/dev/null 2>&1; then
+        export use_update_initramfs=true
+    else
+        export use_update_initramfs=false
+    fi
 
-  # Generate initramfs using available initramfs tool
-  if [ "$use_dracut" = true ]; then
-      if [[ "$_distro" =~ ^(Fedora|Suse)$ ]]; then
-        echo "Running 'dracut' to generate the 'initramfs' file for $_distro..."
-        sudo dracut --force --hostonly ${_dracut_options} --kver "$_kernelname_rpm"
-      else
-        echo "Running 'dracut' to generate the 'initramfs' file for $_distro..."
-        sudo dracut --force --hostonly ${_dracut_options} --kver "$_kernelname"
+    # Generate initramfs using available initramfs tool
+    if [ "$use_dracut" = true ]; then
+        if [[ "$_distro" =~ ^(Fedora|Suse)$ ]]; then
+          echo "Running 'dracut' to generate the 'initramfs' file for ${_distro}..."
+          _sudo dracut --force --hostonly "${_dracut_options}" --kver "${_kernelname_rpm}"
+        else
+          echo "Running 'dracut' to generate the 'initramfs' file for ${_distro}..."
+          _sudo dracut --force --hostonly "${_dracut_options}" --kver "$_kernelname"
+        fi
+
+    elif [ "$use_mkinitcpio" = true ]; then
+        echo "Running 'mkinitcpio' to generate the 'initramfs' file..."
+        _sudo mkinitcpio -k "$_kernelname" -g "/boot/initramfs-${_kernelname}.img"
+    elif [ "$use_update_initramfs" = true ]; then
+        echo "Running 'update-initramfs' to generate the 'initramfs' file..."
+        _sudo update-initramfs -c -k "$_kernelname"
+    else
+        echo "Error: Unable to find dracut, mkinitcpio, or update-initramfs command."
+        exit 1
+    fi
+
+      # Probe for the name of the GRUB configuration command
+    if command -v grub-mkconfig >/dev/null 2>&1; then
+        export grub_cfg_cmd="_sudo grub-mkconfig -o /boot/grub/grub.cfg"
+    elif command -v grub2-mkconfig >/dev/null 2>&1; then
+        export grub_cfg_cmd="_sudo grub2-mkconfig -o /boot/grub2/grub.cfg"
+    else
+        echo "Error: Unable to find grub-mkconfig or grub2-mkconfig command."
+        export use_grub=false
+    fi
+
+      msg2 "Updating GRUB"
+    if [ "${_use_grub}" = "false" ]; then
+      echo "GRUB2 not installed, skipping GRUB2 steps..."
+    else
+      _sudo "${_grub_cfg_cmd}"
+    fi
+  fi
+}
+
+_strip() {
+    if [ "$_STRIP" = "true" ]; then
+      if [[ "$_compiler_name" =~ llvm ]]; then
+        echo "Stripping vmlinux..."
+        llvm-strip --strip-all-gnu "$STRIP_STATIC" "vmlinux"
+      elif [[ "$_compiler_name" =~ gcc ]]; then
+        echo "Stripping vmlinux..."
+        strip --strip-all "$STRIP_STATIC" "vmlinux"
       fi
-
-  elif [ "$use_mkinitcpio" = true ]; then
-      echo "Running 'mkinitcpio' to generate the 'initramfs' file..."
-      sudo mkinitcpio -k "$_kernelname" -g "/boot/initramfs-${_kernelname}.img"
-  elif [ "$use_update_initramfs" = true ]; then
-      echo "Running 'update-initramfs' to generate the 'initramfs' file..."
-      sudo update-initramfs -c -k "$_kernelname"
-  else
-      echo "Error: Unable to find dracut, mkinitcpio, or update-initramfs command."
-      exit 1
-  fi
-
-    # Probe for the name of the GRUB configuration command
-  if command -v grub-mkconfig >/dev/null 2>&1; then
-      grub_cfg_cmd="sudo grub-mkconfig -o /boot/grub/grub.cfg"
-  elif command -v grub2-mkconfig >/dev/null 2>&1; then
-      grub_cfg_cmd="sudo grub2-mkconfig -o /boot/grub2/grub.cfg"
-  else
-      echo "Error: Unable to find grub-mkconfig or grub2-mkconfig command."
-      use_grub=false
-  fi
-
-    msg2 "Updating GRUB"
-  if [ "$_use_grub" = "false" ]; then
-    echo "GRUB2 not installed, skipping GRUB2 steps..."
-  else
-    sudo ${_grub_cfg_cmd}
-  fi
-  }
+    fi
+}
 
 if [ "$1" != "install" ] && [ "$1" != "config" ] && [ "$1" != "verbose" ] && [ "$1" != "uninstall-help" ]; then
   msg2 "Argument not recognised, options are:
@@ -362,13 +404,13 @@ if [ "$1" = "install" ] || [ "$1" = "verbose" ]; then
   if [[ "$_distro" =~ ^(Debian|Mint|Ubuntu)$ ]]; then
     msg2 "Building kernel DEB packages"
     _gen_kern_name
-    _make bindeb-pkg LOCALVERSION=-${_kernel_flavor} KDEB_PKGVERSION=1
+    _make bindeb-pkg LOCALVERSION=-"${_kernel_flavor}" KDEB_PKGVERSION=1
     msg2 "Build done"
     _move_artifacts "deb"
     _winesync_copy
 
     if _confirm_install; then
-      sudo dpkg -i "$_where/${_kernelname}"/*.deb
+      _sudo dpkg -i "$_where/${_kernelname}"/*.deb
     fi
 
   elif [[ "$_distro" =~ ^(Fedora|Suse)$ ]]; then
@@ -390,12 +432,12 @@ if [ "$1" = "install" ] || [ "$1" = "verbose" ]; then
 
     if _confirm_install; then
       if [ "$_distro" = "Fedora" ]; then
-        sudo dnf install "$_where/${_kernelname_rpm}"/*.rpm
+        _sudo dnf install "$_where/${_kernelname_rpm}"/*.rpm
       elif [ "$_distro" = "Suse" ]; then
-        sudo zypper removelock kernel-default-devel kernel-default kernel-devel kernel-syms
-        sudo zypper remove kernel-devel
-        sudo zypper install --oldpackage --allow-unsigned-rpm "$_where/${_kernelname}"/*.rpm
-        sudo zypper addlock kernel-default-devel kernel-default kernel-devel kernel-syms
+        _sudo zypper removelock kernel-default-devel kernel-default kernel-devel kernel-syms
+        _sudo zypper remove kernel-devel
+        _sudo zypper install --oldpackage --allow-unsigned-rpm "$_where/${_kernelname}"/*.rpm
+        _sudo zypper addlock kernel-default-devel kernel-default kernel-devel kernel-syms
       fi
       _regen_boot
     fi
@@ -407,19 +449,15 @@ if [ "$1" = "install" ] || [ "$1" = "verbose" ]; then
     _make || { echo "Kernel build failed"; exit 1; }
     msg2 "Build successful"
     _winesync_copy
-
-    if [ "$_STRIP" = "true" ]; then
-      echo "Stripping vmlinux..."
-      strip -v $STRIP_STATIC "vmlinux" || echo "strip failed"
-    fi
+    _strip
 
     PKGROOT="$_where/${_kernelname}"
 
     msg2 "Preparing packaging directories..."
-    mkdir -p "$PKGROOT/boot"
-    mkdir -p "$PKGROOT/lib/modules"
-    mkdir -p "$PKGROOT/install"
-    headers_dest="$PKGROOT/usr/src/linux-$_kernelname"
+    mkdir -p "${PKGROOT}/boot"
+    mkdir -p "${PKGROOT}/lib/modules"
+    mkdir -p "${PKGROOT}/install"
+    headers_dest="${PKGROOT}/usr/src/linux-$_kernelname"
     mkdir -p "$headers_dest/arch/x86"
 
     msg2 "Removing unneeded architectures..."
@@ -439,32 +477,32 @@ if [ "$1" = "install" ] || [ "$1" = "verbose" ]; then
     while read -rd '' file; do
       case "$(file -bi "$file")" in
         application/x-sharedlib\;*)      # Libraries (.so)
-          strip -v $STRIP_SHARED "$file" ;;
+          strip -v "$STRIP_SHARED" "$file" ;;
         application/x-archive\;*)        # Libraries (.a)
-          strip -v $STRIP_STATIC "$file" ;;
+          strip -v "$STRIP_STATIC" "$file" ;;
         application/x-executable\;*)     # Binaries
-          strip -v $STRIP_BINARIES "$file" ;;
+          strip -v "$STRIP_BINARIES" "$file" ;;
         application/x-pie-executable\;*) # Relocatable binaries
-          strip -v $STRIP_SHARED "$file" ;;
+          strip -v "$STRIP_SHARED" "$file" ;;
       esac
     done < <(find . -type f -perm -u+x ! -name vmlinux -print0)
 
     msg2 "Copying kernel files..."
-    cp -a arch/x86/boot/bzImage "$PKGROOT/boot/vmlinuz-$_kernelname"
-    cp -a System.map "$PKGROOT/boot/System.map-$_kernelname"
-    cp -a .config "$PKGROOT/boot/config-$_kernelname"
-    rsync -aHAX --delete-during $_where/linux-src-git/ "$headers_dest"
+    cp -a arch/x86/boot/bzImage "${PKGROOT}/boot/vmlinuz-$_kernelname"
+    cp -a System.map "${PKGROOT}/boot/System.map-$_kernelname"
+    cp -a .config "${PKGROOT}/boot/config-$_kernelname"
+    rsync -aHAX --delete-during "$_where"/linux-src-git/ "$headers_dest"
 
     msg2 "Installing modules..."
     if [ "$_STRIP" = "true" ]; then
-      _make INSTALL_MOD_PATH="$PKGROOT" INSTALL_MOD_STRIP=1 modules_install
+      _make INSTALL_MOD_PATH="${PKGROOT}" INSTALL_MOD_STRIP=1 modules_install
     else
-      _make INSTALL_MOD_PATH="$PKGROOT" modules_install
+      _make INSTALL_MOD_PATH="${PKGROOT}" modules_install
     fi
 
     # Fix up module metadata (some tools depend on this)
     msg2 "Running depmod on packaged modules..."
-    sudo depmod -b "$PKGROOT" "$_kernelname"
+    _sudo depmod -b "${PKGROOT}" "$_kernelname"
 
     msg2 "Installing headers..."
     cp -a include "$headers_dest/"
@@ -473,8 +511,8 @@ if [ "$1" = "install" ] || [ "$1" = "verbose" ]; then
     cp -a scripts "$headers_dest/"
 
     # Symlink for dkms/build expectations
-    ln -sf "/usr/src/linux-$_kernelname" "$PKGROOT/lib/modules/$_kernelname/build"
-    ln -sf "/usr/src/linux-$_kernelname" "$PKGROOT/lib/modules/$_kernelname/source"
+    ln -sf "/usr/src/linux-$_kernelname" "${PKGROOT}/lib/modules/$_kernelname/build"
+    ln -sf "/usr/src/linux-$_kernelname" "${PKGROOT}/lib/modules/$_kernelname/source"
 
     # Cleanup headers junk files
     find "$headers_dest" -type f \( \
@@ -493,7 +531,7 @@ if [ "$1" = "install" ] || [ "$1" = "verbose" ]; then
     rm -rf "$headers_dest"/{.git,.tmp_versions,modules.order,Module.symvers,build,source}
 
     msg2 "Creating slack-desc..."
-    cat <<EOF > "$PKGROOT/install/slack-desc"
+    cat <<EOF > "${PKGROOT}/install/slack-desc"
 kernel-${_kernel_flavor}: Slackware TKT Kernel
 kernel-${_kernel_flavor}: This is a generic kernel built from kernel.org sources.
 kernel-${_kernel_flavor}: Packaged by TKT kernel toolkit.
@@ -503,7 +541,7 @@ EOF
     _rootdev=$(findmnt -n -o SOURCE /)
 
     msg2 "Creating doinst.sh..."
-    cat <<EOF > "$PKGROOT/install/doinst.sh"
+    cat <<EOF > "${PKGROOT}/install/doinst.sh"
 #!/bin/sh
 
 # Auto-generate initrd
@@ -541,13 +579,13 @@ LILOBLOCK
 fi
 EOF
 
-    sudo chmod 755 "$PKGROOT/install/doinst.sh"
+    _sudo chmod 755 "$PKGROOT/install/doinst.sh"
 
     msg2 "Packaging .txz archive..."
-    cd "$PKGROOT" || exit 1
-    find . -type d -exec sudo chmod 755 {} +
-    find . -type f -exec sudo chmod 644 {} +
-    sudo chmod 755 ./boot/vmlinuz-$_kernelname
+    cd "${PKGROOT}" || exit 1
+    find . -type d -exec "${_sudo}" chmod 755 {} +
+    find . -type f -exec "${_sudo}" chmod 644 {} +
+    _sudo chmod 755 ./boot/vmlinuz-"$_kernelname"
     tar --numeric-owner -cf - boot lib usr install | xz -9e > "Slackware-kernel-$_kernelname-TKT-x86_64-1.txz"
 
     msg2 "Slackware package created."
@@ -560,11 +598,7 @@ EOF
     _make || { echo "Kernel build failed"; exit 1; }
     msg2 "Build successful"
     _winesync_copy
-
-    if [ "$_STRIP" = "true" ]; then
-      echo "Stripping vmlinux..."
-      strip -v $STRIP_STATIC "vmlinux" || echo "strip failed"
-    fi
+    _strip
 
     _pkgname="kernel-${_kernel_flavor}"
     _pkgver="${_basekernel}.${_sub}"
@@ -572,37 +606,37 @@ EOF
     _pkgfullver="${_pkgname}-${_pkgver}_${_pkgrev}"
 
     PKGROOT="$_where/${_kernelname}"
-    rm -rf "$PKGROOT"
-    msg2 "Preparing packaging directory: $PKGROOT"
+    rm -rf "${PKGROOT}"
+    msg2 "Preparing packaging directory: ${PKGROOT}"
 
-    mkdir -p "$PKGROOT/boot"
-    mkdir -p "$PKGROOT/usr/lib/modules/${_kernelname}"
-    headers_dest="$PKGROOT/usr/src/linux-$_kernelname"
+    mkdir -p "${PKGROOT}/boot"
+    mkdir -p "${PKGROOT}/usr/lib/modules/${_kernelname}"
+    headers_dest="${PKGROOT}/usr/src/linux-$_kernelname"
     mkdir -p "$headers_dest"
 
     msg2 "Installing modules into package root..."
     if [ "$_STRIP" = "true" ]; then
-      _make INSTALL_MOD_PATH="$PKGROOT/usr" INSTALL_MOD_STRIP=1 modules_install
+      _make INSTALL_MOD_PATH="${PKGROOT}/usr" INSTALL_MOD_STRIP=1 modules_install
     else
-      _make INSTALL_MOD_PATH="$PKGROOT/usr" modules_install
+      _make INSTALL_MOD_PATH="${PKGROOT}/usr" modules_install
     fi
 
     msg2 "Copying kernel and config files..."
-    cp -a "arch/x86/boot/bzImage" "$PKGROOT/boot/vmlinuz-$_kernelname"
-    cp -a "System.map" "$PKGROOT/boot/System.map-$_kernelname"
-    cp -a ".config" "$PKGROOT/boot/config-$_kernelname"
+    cp -a "arch/x86/boot/bzImage" "${PKGROOT}/boot/vmlinuz-$_kernelname"
+    cp -a "System.map" "${PKGROOT}/boot/System.map-$_kernelname"
+    cp -a ".config" "${PKGROOT}/boot/config-$_kernelname"
 
     msg2 "Installing headers into package root..."
     rsync -a --delete-during . "$headers_dest" --exclude='.*' \
   --exclude='*.o' --exclude='*.ko' --exclude='*.cmd' \
   --exclude='vmlinux' --exclude='Module.symvers' --exclude='*.mod.c'
 
-    cd "$PKGROOT/usr/lib/modules"
+    cd "${PKGROOT}/usr/lib/modules"
     rm -f "$_kernelname/build" "$_kernelname/source"
     ln -sf "../../src/linux-$_kernelname" "$_kernelname/build"
     ln -sf "../../src/linux-$_kernelname" "$_kernelname/source"
 
-    cat <<EOF > "$PKGROOT/install-script.sh"
+    cat <<EOF > "${PKGROOT}/install-script.sh"
 #!/bin/sh
 # Post-install script for $_pkgname
 
@@ -613,9 +647,9 @@ xbps-reconfigure -f ${_pkgfullver}
 
 exit 0
 EOF
-  chmod 755 "$PKGROOT/install-script.sh"
+  chmod 755 "${PKGROOT}/install-script.sh"
 
-  cat <<EOF > "$PKGROOT/remove-script.sh"
+  cat <<EOF > "${PKGROOT}/remove-script.sh"
 #!/bin/sh
 # Pre-remove script for $_pkgname
 
@@ -629,11 +663,11 @@ xbps-reconfigure -f ${_pkgfullver}
 
 exit 0
 EOF
-    chmod 755 "$PKGROOT/remove-script.sh"
+    chmod 755 "${PKGROOT}/remove-script.sh"
 
     msg2 "Creating XBPS package..."
 
-    cd "$PKGROOT" || exit 1
+    cd "${PKGROOT}" || exit 1
 
     xbps-create -A x86_64 \
                 -n "${_pkgfullver}" \
@@ -644,7 +678,7 @@ EOF
 
     msg2 "Void Linux package created: $_where/${_kernel_flavor}/${_pkgfullver}.x86_64.xbps"
 
-    rm -rf "$PKGROOT/boot" "$PKGROOT/usr" "$PKGROOT/install-script.sh" "$PKGROOT/remove-script.sh"
+    rm -rf "${PKGROOT}/boot" "${PKGROOT}/usr" "${PKGROOT}/install-script.sh" "${PKGROOT}/remove-script.sh"
 
     local_repo_dir="$(realpath "$_where/${_kernelname}")"
 
@@ -653,23 +687,19 @@ EOF
       xbps-rindex -d -a "$local_repo_dir"/*.xbps || { echo "Failed to update repo index"; exit 1; }
 
       msg2 "Installing package..."
-      sudo xbps-install -y --repository="$local_repo_dir" "${_pkgfullver}" || { echo "Package install   failed"; exit 1; }
+      _sudo xbps-install -y --repository="$local_repo_dir" "${_pkgfullver}" || { echo "Package install   failed"; exit 1; }
 
-      sudo depmod "$_kernelname" || { echo "depmod failed"; exit 1; }
-      sudo xbps-reconfigure -f ${_pkgfullver} || { echo "xbps-reconfigure failed"; exit 1; }
+      _sudo depmod "$_kernelname" || { echo "depmod failed"; exit 1; }
+      _sudo xbps-reconfigure -f "${_pkgfullver}" || { echo "xbps-reconfigure failed"; exit 1; }
     fi
 
   elif [[ "$_distro" =~ ^(Gentoo|Generic)$ ]]; then
     _gen_kern_name
     ./scripts/config --set-str LOCALVERSION "-${_kernel_flavor}"
     msg2 "Building kernel"
-    make -j ${_thread_num}
+    make -j "${_thread_num}"
     msg2 "Build successful"
-
-    if [ "$_STRIP" = "true" ]; then
-      echo "Stripping vmlinux..."
-      strip -v $STRIP_STATIC "vmlinux"
-    fi
+    _strip
 
     _headers_folder_name="linux-$_kernel_flavor"
 
@@ -677,13 +707,13 @@ EOF
 
     msg2 "The installation process will run the following commands:"
     echo "    # copy the patched and compiled sources to /usr/src/$_headers_folder_name"
-    echo "    sudo make modules_install"
-    echo "    sudo make install"
-    echo "    sudo dracut --force --hostonly ${_dracut_options} --kver $_kernel_flavor"
-    echo "    sudo grub-mkconfig -o /boot/grub/grub.cfg"
+    echo "    _sudo make modules_install"
+    echo "    _sudo make install"
+    echo "    _sudo dracut --force --hostonly ${_dracut_options} --kver $_kernel_flavor"
+    echo "    _sudo grub-mkconfig -o /boot/grub/grub.cfg"
 
     msg2 "Note: Uninstalling requires manual intervention, use './install.sh uninstall-help' for more information."
-    read -p "Continue ? Y/[n]: " _continue
+    read -rp "Continue ? Y/[n]: " _continue
 
     if ! [[ "$_continue" =~ ^(Y|y|Yes|yes)$ ]];then
       exit 0
@@ -692,30 +722,30 @@ EOF
     msg2 "Copying files over to /usr/src/$_headers_folder_name"
     if [ -d "/usr/src/$_headers_folder_name" ]; then
       msg2 "Removing old folder in /usr/src/$_headers_folder_name"
-      sudo rm -rf "/usr/src/$_headers_folder_name"
+      _sudo rm -rf "/usr/src/$_headers_folder_name"
     fi
-    sudo cp -R . "/usr/src/$_headers_folder_name"
-    sudo rm -rf "/usr/src/$_headers_folder_name"/.git*
+    _sudo cp -R . "/usr/src/$_headers_folder_name"
+    _sudo rm -rf "/usr/src/$_headers_folder_name"/.git*
     cd "/usr/src/$_headers_folder_name"
 
     msg2 "Installing modules"
     if [ "$_STRIP" = "true" ]; then
-      sudo make modules_install INSTALL_MOD_STRIP="1"
+      _sudo make modules_install INSTALL_MOD_STRIP="1"
     else
-      sudo make modules_install
+      _sudo make modules_install
     fi
     msg2 "Removing modules from source folder in /usr/src/${_kernel_src_gentoo}"
-    sudo find . -type f -name '*.ko' -delete
-    sudo find . -type f -name '*.ko.cmd' -delete
+    _sudo find . -type f -name '*.ko' -delete
+    _sudo find . -type f -name '*.ko.cmd' -delete
 
     msg2 "Installing kernel"
-    sudo make install
+    _sudo make install
     _regen_boot
 
     if [ "$_distro" = "Gentoo" ]; then
 
       msg2 "Selecting the kernel source code as default source folder"
-      sudo ln -sfn "/usr/src/$_headers_folder_name" "/usr/src/linux"
+      _sudo ln -sfn "/usr/src/$_headers_folder_name" "/usr/src/linux"
 
       msg2 "Rebuild kernel modules with \"emerge @module-rebuild\" ?"
       if [ "$_compiler" = "llvm" ];then
@@ -723,9 +753,9 @@ EOF
         warning "     Manually setting \"CC=clang\" for some modules may work if you haven't used LTO"
       fi
 
-      read -p "Y/[n]: " _continue
+      read -rp "Y/[n]: " _continue
       if [[ "$_continue" =~ ^(Y|y|Yes|yes)$ ]];then
-        sudo emerge @module-rebuild --keep-going
+        _sudo emerge @module-rebuild --keep-going
       fi
     fi
 
@@ -734,7 +764,7 @@ fi
 
 if [ "$1" = "uninstall-help" ]; then
 
-  if [ -z $_distro ]; then
+  if [ -z "$_distro" ]; then
     _distro_prompt
   fi
 
@@ -745,21 +775,21 @@ if [ "$1" = "uninstall-help" ]; then
     dpkg -l "*" | grep "linux.*"
     dpkg -l "*linux-libc-dev*" | grep "linux.*"
     msg2 "To uninstall a version, you should remove the linux-image, linux-headers and linux-libc-dev associated to it (if installed), with: "
-    msg2 "      sudo apt remove linux-image-VERSION linux-headers-VERSION linux-libc-dev-VERSION"
+    msg2 "      _sudo apt remove linux-image-VERSION linux-headers-VERSION linux-libc-dev-VERSION"
     msg2 "       where VERSION is displayed in the lists above, uninstall only versions that have \"tkg\" in its name"
     msg2 "Note: linux-libc-dev packages are no longer created and installed, you can safely remove any remnants."
   elif [ "$_distro" = "Fedora" ]; then
     msg2 "List of installed custom TKT kernels: "
     dnf list --installed | grep -i "tkt"
     msg2 "To uninstall a version, you should remove the kernel, kernel-headers and kernel-devel associated to it (if installed), with: "
-    msg2 "      sudo dnf remove --noautoremove kernel-VERSION kernel-devel-VERSION kernel-headers-VERSION"
+    msg2 "      _sudo dnf remove --noautoremove kernel-VERSION kernel-devel-VERSION kernel-headers-VERSION"
     msg2 "       where VERSION is displayed in the second column"
     msg2 "Note: kernel-headers packages are no longer created and installed, you can safely remove any remnants."
   elif [ "$_distro" = "Suse" ]; then
     msg2 "List of installed custom TKT kernels: "
     zypper packages --installed-only | grep "kernel.*"
     msg2 "To uninstall a version, you should remove the kernel, kernel-headers and kernel-devel associated to it (if installed), with: "
-    msg2 "      sudo zypper remove --no-clean-deps kernel-VERSION kernel-devel-VERSION kernel-headers-VERSION"
+    msg2 "      _sudo zypper remove --no-clean-deps kernel-VERSION kernel-devel-VERSION kernel-headers-VERSION"
     msg2 "       where VERSION is displayed in the second to last column"
     msg2 "Note: kernel-headers packages are no longer created and installed, you can safely remove any remnants."
   elif [[ "$_distro" =~ ^(Generic|Gentoo)$ ]]; then
@@ -770,7 +800,7 @@ if [ "$1" = "uninstall-help" ]; then
     msg2 "To uninstall a kernel version installed through install.sh with 'Generic' as a distro:"
     msg2 "  - Remove manually the corresponding folder in '/lib/modules'"
     msg2 "  - Remove manually the corresponding 'System.map', 'vmlinuz', 'config' and 'initramfs' in the folder :/boot"
-    msg2 "  - Update the boot menu. e.g. 'sudo grub-mkconfig -o /boot/grub/grub.cfg'"
+    msg2 "  - Update the boot menu. e.g. '_sudo grub-mkconfig -o /boot/grub/grub.cfg'"
   fi
 
 fi

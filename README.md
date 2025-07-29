@@ -6,23 +6,23 @@
 #### Tested distro's so far;
 | Logo | Distro      | Status                                     |
 |------|-------------|--------------------------------------------|
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Arch.svg" width="128"/> | Arch Linux  | ✅ Working                                  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Debian.svg" width="64"/> | Debian      | ✅ Working                                  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Fedora.svg" width="64"/> | Fedora      | ✅ Working                                  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Gentoo.svg" width="64"/> | Gentoo      | ✅ Working                                  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Mint.svg" width="64"/> | Linux Mint  | ✅ Working *(Use Ubuntu kernel)*            |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/SUSE.svg" width="64"/> | OpenSUSE    | ✅ Working *(Only if SELinux is disabled)*  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Slackware.svg" width="64"/> | Slackware   | ✅ Working                                  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Ubuntu.svg" width="128"/> | Ubuntu      | ✅ Working                                  |
-| <img src="https://github.com/The-Kernel-Toolkit/TKT/raw/refs/heads/main/.github/images/Void.svg" width="64"/> | Void Linux  | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Arch.svg" width="128"/> | Arch Linux  | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Debian.svg" width="64"/> | Debian      | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Fedora.svg" width="64"/> | Fedora      | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Gentoo.svg" width="64"/> | Gentoo      | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Mint.svg" width="64"/> | Linux Mint  | ✅ Working *(Use Ubuntu kernel)*            |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/SUSE.svg" width="64"/> | OpenSUSE    | ✅ Working *(Only if SELinux is disabled)*  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Slackware.svg" width="64"/> | Slackware   | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Ubuntu.svg" width="128"/> | Ubuntu      | ✅ Working                                  |
+| <img src="https://github.com/ETJAKEOC/TKT/raw/refs/heads/main/.github/images/Void.svg" width="64"/> | Void Linux  | ✅ Working                                  |
 
 ### WE HAVE PREBUILT KERNELS FOR TESTING!!!
 #### Please check the release tab for the specific kernel of your choosing.
 #### All kernel builds tested in a VM install.
 
-- If you like the work I do here, and want to donate to me/the project, checkout the [DONATIONS.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/DOCS/DONATIONS.md) file.
-- Please checkout the [CONTRIBUTIONS_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/DOCS/CONTRIBUTION_GUIDELINE.md) file for information about collaboration or how to help the project in general.
-- Please read the [COMPILATION_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/DOCS/COMPILATION_GUIDELINE.md) file for information about how to run the script and compile your own kernel.
+- If you like the work I do here, and want to donate to me/the project, checkout the [DONATIONS.MD](https://github.com/ETJAKEOC/TKT/blob/main/DOCS/DONATIONS.md) file.
+- Please checkout the [CONTRIBUTIONS_GUIDELINE.MD](https://github.com/ETJAKEOC/TKT/blob/main/DOCS/CONTRIBUTION_GUIDELINE.md) file for information about collaboration or how to help the project in general.
+- Please read the [COMPILATION_GUIDELINE.MD](https://github.com/ETJAKEOC/TKT/blob/main/DOCS/COMPILATION_GUIDELINE.md) file for information about how to run the script and compile your own kernel.
 
 This repository provides scripts to automatically download, patch and compile the Linux Kernel from [the official Linux git repository](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git), with a selection of patches aiming for better desktop/gaming experience. The provided patches can be enabled/disabled by editing the `customization.cfg` file and/or by following the interactive install script. You can use an external config file (default is `$HOME/.config/TKT.cfg`, tweakable with the `_EXT_CONFIG_PATH` variable in `customization.cfg`). You can also use your own patches (more information in `customization.cfg` file).
 
@@ -88,7 +88,7 @@ For all the supported linux distributions, `TKT` has to be cloned with `git`. Si
 
 #### Arch & derivatives
 ```shell
-git clone --depth 1 https://github.com/The-Kernel-Toolkit/TKT.git
+git clone --depth 1 https://github.com/ETJAKEOC/TKT.git
 cd TKT
 # Optional: edit the "customization.cfg" file
 makepkg -si
@@ -101,7 +101,7 @@ The script will use a slightly modified Arch config from the `TKT-config` folder
 #### DEB (Debian, Ubuntu and derivatives) and RPM (Fedora, SUSE and derivatives) based distributions
 The interactive `install.sh` script will create, depending on the selected distro, `.deb` or `.rpm` packages, move them in the the subfolder `<kver>-tkt-<deb-distro>-*/*.deb` or `<kver>-tkt-<rpm-distro>-*/*.rpm` then prompts to install them with the distro's package manager.
 ```shell
-git clone --depth 1 https://github.com/The-Kernel-Toolkit/TKT.git
+git clone --depth 1 https://github.com/ETJAKEOC/TKT.git
 cd TKT
 # Optional: edit the "customization.cfg" file
 ./install.sh install
@@ -110,7 +110,7 @@ cd TKT
 #### Gentoo
 The interactive `install.sh` script supports Gentoo by following the same procedure as `Generic`, symlinks the sources folder in `/usr/src/` to `/usr/src/linux`, then offers to do an `emerge @module-rebuild` for convenience
 ```shell
-git clone --depth 1 https://github.com/The-Kernel-Toolkit/TKT.git
+git clone --depth 1 https://github.com/ETJAKEOC/TKT.git
 cd TKT
 # Optional: edit the "customization.cfg" file
 ./install.sh install
@@ -120,7 +120,7 @@ cd TKT
 #### Slackware
 The interactive `install.sh` script supports Slackware by following similar steps to `Generic`, providing you with `<kver>-tkt-slackware-*>/*.txz` packages for install convenience.
 ```shell
-git clone --depth 1 https://github.com/The-Kernel-Toolkit/TKT.git
+git clone --depth 1 https://github.com/ETJAKEOC/TKT.git
 cd TKT
 # Optional: edit the "customization.cfg" file
 ./install.sh install
@@ -130,7 +130,7 @@ sudo installpkg SLACKPKGS/*.txz
 #### Void
 The interactive `install.sh` script supports Void by following similar steps to `Generic`, providing you with `<kver>-tkt-void-*/*.xbps` packages for install convenience.
 ```shell
-git clone --depth 1 https://github.com/The-Kernel-Toolkit/TKT.git
+git clone --depth 1 https://github.com/ETJAKEOC/TKT.git
 cd TKT
 # Optional: edit the "customization.cfg" file
 ./install.sh install
@@ -140,7 +140,7 @@ sudo installpkg SLACKPKGS/*.txz
 #### Generic install
 The interactive `install.sh` script can be used to perform a "Generic" install by choosing `Generic` when prompted. It git clones the kernel tree in the `linux-src-git` folder, patches the code and edits a `.config` file in it. The commands to do are the following:
 ```shell
-git clone --depth 1 https://github.com/The-Kernel-Toolkit/TKT.git
+git clone --depth 1 https://github.com/ETJAKEOC/TKT.git
 cd TKT
 # Optional: edit the "customization.cfg" file
 ./install.sh install
@@ -170,10 +170,6 @@ The script will use a slightly modified Arch config from the `config` folder, it
 - `_libunwind_replace` is a variable that can be changed in `customization.cfg` for replacing `libunwind` with `llvm-libunwind`.
 - The script uses Arch's `.config` file as a base. A custom one can be provided through `_configfile` in `customization.cfg`.
 - The installed files will not be tracked by your package manager and uninstalling requires manual intervention. `./install.sh uninstall-help` can help with useful information if your install procedure follows the `Generic` approach.
-
-#### Included script!!!
-You may notice a random script file in this repository called `initramfs-and-grub-update.sh`. This script *should* provide you with the most basic setup to recompile your initramfs, and resetup the GRUB2 bootmenu after compiling your kernel.
-This has not been tested on all systems, results may vary, you may have to adapt to fit your system.
 
 #### Support
 

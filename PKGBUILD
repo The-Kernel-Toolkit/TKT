@@ -8,7 +8,7 @@
 # All credits due to the previous pioneers of this script whom came before me. Thank you for your effort.
 # Hijacked by: ETJAKEOC <etjakeoc@gmail.com>
 
-pkgdesc='A customized Linux kernel install script, forked from the TKG script, aimed at a more performant tune, at the risk of stability.'
+pkgdesc='A customized Linux kernel install script, forked from the TKG script, aimed at a more performant tune, at the risk of unsupported hardware.'
 arch=('x86_64') # no i686 in here
 url="https://www.kernel.org/"
 license=('GPL2')
@@ -37,7 +37,7 @@ if [ ! -e "$_where"/TKT_CONFIG ]; then
 
   # extract and define value of _EXT_CONFIG_PATH from customization file
   if [[ -z "$_EXT_CONFIG_PATH" ]]; then
-    eval `grep _EXT_CONFIG_PATH "$_where"/customization.cfg`
+    eval "$(grep _EXT_CONFIG_PATH "$_where"/customization.cfg)"
   fi
 
   if [ -f "$_EXT_CONFIG_PATH" ]; then
@@ -60,7 +60,7 @@ source "$_where"/TKT_CONFIG
 if [ -n "$_custom_pkgbase" ]; then
   pkgbase="${_custom_pkgbase}"
 else
-  pkgbase=linux"${_basever}"-tkt-"${_cpusched}"${_compiler_name}
+  pkgbase=linux"${_basever}"-tkt-"${_cpusched}""${_compiler_name}"
 fi
 pkgname=("${pkgbase}" "${pkgbase}-headers")
 pkgver="${_basekernel}"."${_sub}"
@@ -76,9 +76,9 @@ export KBUILD_BUILD_USER=$pkgbase
 export KBUILD_BUILD_TIMESTAMP="$(date -Ru${SOURCE_DATE_EPOCH:+d @$SOURCE_DATE_EPOCH})"
 
 prepare() {
-  source "$_where"/TKT_CONFIG
-  source "$_where"/kconfigs/prepare
-  rm -rf $pkgdir # Nuke the entire pkg folder so it'll get regenerated clean on next build
+  source "${_where}"/TKT_CONFIG
+  source "${_where}"/kconfigs/prepare
+  rm -rf "${pkgdir}" # Nuke the entire pkg folder so it'll get regenerated clean on next build
   ln -s "${_kernel_work_folder_abs}" "${srcdir}/linux-src-git"
   _tkg_srcprep
 }
@@ -86,7 +86,7 @@ prepare() {
 build() {
   source "$_where"/TKT_CONFIG
 
-  cd "$_kernel_work_folder_abs"
+  cd "$_kernel_work_folder_abs" || return
 
   # Use custom compiler paths if defined
   if [[ "$_compiler_name" =~ llvm ]] && [ -n "${CUSTOM_LLVM_PATH}" ]; then
@@ -96,7 +96,7 @@ build() {
   fi
 
   if [ "$_force_all_threads" = "true" ]; then
-    _force_all_threads="-j$((`nproc`))"
+    _force_all_threads="-j$(nproc)"
   else
     _force_all_threads="${MAKEFLAGS}"
   fi
@@ -135,14 +135,15 @@ build() {
   # Setup "llvm_opts" if compiling using clang
   if [[ "$_compiler_name" =~ llvm ]]; then
     time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
-    make ${_force_all_threads} ${llvm_opt} bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
+    make "${_force_all_threads}" "${llvm_opt}" bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
   elif [[ "$_compiler_name" =~ gcc ]]; then
     time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
-    make ${_force_all_threads} bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
+    make "${_force_all_threads}" bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
   fi
     return 0
   )
 }
+
 hackbase() {
   source "$_where"/TKT_CONFIG
 
@@ -162,7 +163,7 @@ hackbase() {
   fi
   replaces=(virtualbox-guest-modules-arch wireguard-arch)
 
-  cd "$_kernel_work_folder_abs"
+  cd "$_kernel_work_folder_abs" || return
 
   # Get kernel version
   local _kernver="$(<version)"
@@ -170,7 +171,7 @@ hackbase() {
 
   msg2 "Installing boot image..."
   # Systemd expects to find the kernel here to allow hibernation
-  install -Dm644 "$(make ${llvm_opt} -s image_name)" "$modulesdir/vmlinuz"
+  install -Dm644 "$(make "${llvm_opt}" -s image_name)" "$modulesdir/vmlinuz"
 
   # Used by mkinitcpio to name the kernel
   echo "$pkgbase" | install -Dm644 /dev/stdin "$modulesdir/pkgbase"
@@ -197,7 +198,7 @@ hackbase() {
   # ntsync
   if [ -e "${srcdir}/ntsync.conf" ]; then
     # Workaround for missing header on <6.14 with ntsync
-    if [ $_basever -lt 614 ]; then
+    if [ "$_basever" -lt 614 ]; then
       if [ -e "${_kernel_work_folder_abs}/include/uapi/linux/ntsync.h" ] && [ ! -e "/usr/include/linux/ntsync.h" ]; then
         msg2 "Workaround missing ntsync header"
         install -Dm644 "${_kernel_work_folder_abs}"/include/uapi/linux/ntsync.h "${pkgdir}/usr/include/linux/ntsync.h"
@@ -213,52 +214,8 @@ hackbase() {
     msg2 "Installing udev rule for ntsync"
     install -Dm644 "${srcdir}"/ntsync.rules "${pkgdir}/etc/udev/rules.d/ntsync.rules"
   fi
-
-  # Check if the installed kernel is a UKI and update mkinitcpio preset
-  msg2 "Checking if the installed kernel is a Unified Kernel Image (UKI)..."
-  if _is_uki "$modulesdir/vmlinuz"; then
-    msg2 "Unified Kernel Image detected, updating mkinitcpio preset..."
-    
-    # Create or update the mkinitcpio preset file
-    local preset_file="${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
-    mkdir -p "${pkgdir}/etc/mkinitcpio.d"
-    
-    # Write a UKI-compatible preset
-    cat > "$preset_file" <<EOF
-# mkinitcpio preset file for ${pkgbase} (UKI configuration)
-
-ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="${_kernver}"
-PRESETS=('default')
-
-default_image="/boot/${pkgbase}.efi"
-default_uki="/boot/${pkgbase}.efi"
-default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
-EOF
-
-    msg2 "Updated mkinitcpio preset file at ${preset_file} for UKI"
-  else
-    msg2 "No Unified Kernel Image detected, using standard preset configuration..."
-    
-    # Create a standard preset file (if needed)
-    local preset_file="${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
-    mkdir -p "${pkgdir}/etc/mkinitcpio.d"
-    
-    cat > "$preset_file" <<EOF
-# mkinitcpio preset file for ${pkgbase}
-
-ALL_config="/etc/mkinitcpio.conf"
-ALL_kver="${_kernver}"
-PRESETS=('default')
-
-default_image="/boot/vmlinuz-${pkgbase}"
-default_initramfs="/boot/initramfs-${pkgbase}.img"
-default_options=""
-EOF
-
-    msg2 "Created standard mkinitcpio preset file at ${preset_file}"
-  fi
 }
+
 hackheaders() {
   source "$_where"/TKT_CONFIG
 
@@ -272,7 +229,7 @@ hackheaders() {
     ;;
   esac
 
-  cd "$_kernel_work_folder_abs"
+  cd "$_kernel_work_folder_abs" || return
 
   local builddir="${pkgdir}/usr/lib/modules/$(<version)/build"
 
@@ -290,7 +247,7 @@ hackheaders() {
   mkdir -p "$builddir"/{fs/xfs,mm}
 
   # add resolve_btfids on 5.16+
-  if [[ $_basever = 6* ]] || [ $_basever -ge 516 ]; then
+  if [[ "$_basever" = 6* ]] || [ "$_basever" -ge 516 ]; then
     install -Dt "$builddir"/tools/bpf/resolve_btfids tools/bpf/resolve_btfids/resolve_btfids || ( warning "$builddir/tools/bpf/resolve_btfids was not found. This is undesirable and might break dkms modules !!! Please review your config changes and consider using the provided defconfig and tweaks without further modification." && read -rp "Press enter to continue anyway" )
   fi
 
@@ -336,24 +293,24 @@ hackheaders() {
     if [[ "$_compiler_name" =~ llvm ]]; then
       case "$(file -Sib "$file")" in
         application/x-sharedlib\;*)      # Libraries (.so)
-          strip --strip-all-gnu $STRIP_SHARED "$file" ;;
+          strip --strip-all-gnu "$STRIP_SHARED" "$file" ;;
         application/x-archive\;*)        # Libraries (.a)
-          strip --strip-all-gnu $STRIP_STATIC "$file" ;;
+          strip --strip-all-gnu "$STRIP_STATIC" "$file" ;;
         application/x-executable\;*)     # Binaries
-          strip --strip-all-gnu $STRIP_BINARIES "$file" ;;
+          strip --strip-all-gnu "$STRIP_BINARIES" "$file" ;;
         application/x-pie-executable\;*) # Relocatable binaries
-          strip --strip-all-gnu $STRIP_SHARED "$file" ;;
+          strip --strip-all-gnu "$STRIP_SHARED" "$file" ;;
       esac
     elif [[ "$_compiler_name" =~ gcc ]]; then
       case "$(file -Sib "$file")" in
         application/x-sharedlib\;*)      # Libraries (.so)
-          strip --strip-all $STRIP_SHARED "$file" ;;
+          strip --strip-all "$STRIP_SHARED" "$file" ;;
         application/x-archive\;*)        # Libraries (.a)
-          strip --strip-all $STRIP_STATIC "$file" ;;
+          strip --strip-all "$STRIP_STATIC" "$file" ;;
         application/x-executable\;*)     # Binaries
-          strip --strip-all $STRIP_BINARIES "$file" ;;
+          strip --strip-all "$STRIP_BINARIES" "$file" ;;
         application/x-pie-executable\;*) # Relocatable binaries
-          strip --strip-all $STRIP_SHARED "$file" ;;
+          strip --strip-all "$STRIP_SHARED" "$file" ;;
       esac
     fi
   done < <(find "$builddir" -type f -perm -u+x ! -name vmlinux -print0)
@@ -365,10 +322,10 @@ hackheaders() {
   if [ "$_STRIP" = "true" ]; then
     if [[ "$_compiler_name" =~ llvm ]]; then
       echo "Stripping vmlinux..."
-      strip --strip-all-gnu $STRIP_STATIC "$builddir/vmlinux"
+      strip --strip-all-gnu "$STRIP_STATIC" "$builddir/vmlinux"
     elif [[ "$_compiler_name" =~ gcc ]]; then
       echo "Stripping vmlinux..."
-      strip --strip-all $STRIP_STATIC "$builddir/vmlinux"
+      strip --strip-all "$STRIP_STATIC" "$builddir/vmlinux"
     fi
   fi
 
@@ -377,9 +334,57 @@ hackheaders() {
   fi
 }
 
+_ukify() {
+  msg2 "Checking if the installed kernel is a Unified Kernel Image (UKI)..."
+
+  local preset_file="${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
+  mkdir -p "${pkgdir}/etc/mkinitcpio.d"
+
+    # If preset already exists, back it up
+  if [[ -f "$preset_file" ]]; then
+    msg2 "Existing preset found at ${preset_file}, backing it up to ${preset_file}.old"
+    mv "$preset_file" "${preset_file}.old"
+  fi
+
+  if _is_uki "$modulesdir/vmlinuz"; then
+    msg2 "Unified Kernel Image detected, updating mkinitcpio preset..."
+
+    cat > "$preset_file" <<EOF
+# mkinitcpio preset file for ${pkgbase} (UKI configuration)
+
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="${_kernver}"
+PRESETS=('default')
+default_image="/boot/EFI/${pkgbase}.efi"
+default_uki="/boot/EFI/${pkgbase}.efi"
+default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
+EOF
+
+    msg2 "Updated mkinitcpio preset file at ${preset_file} for UKI"
+  else
+    msg2 "No Unified Kernel Image detected, using standard preset configuration..."
+
+    cat > "$preset_file" <<EOF
+# mkinitcpio preset file for ${pkgbase}
+
+ALL_config="/etc/mkinitcpio.conf"
+ALL_kver="${_kernver}"
+PRESETS=('default')
+default_image="/boot/vmlinuz-${pkgbase}"
+default_initramfs="/boot/initramfs-${pkgbase}.img"
+default_options="--splash /usr/share/systemd/bootctl/splash-arch.bmp"
+EOF
+
+    msg2 "Created standard mkinitcpio preset file at ${preset_file}"
+  fi
+}
+
 source /dev/stdin <<EOF
 package_${pkgbase}() {
 hackbase
+if [[ "\$_ukify" == "true" ]]; then
+  _ukify
+fi
 }
 
 package_${pkgbase}-headers() {
