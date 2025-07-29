@@ -11,8 +11,14 @@ on:
         type: string
 
 env:
+  _processor_opt: "x86-64"
+  _git_mirror: "gregkh"
+  _debugdisable: "true"
+  _noccache: "true"
+  _STRIP: "true"
+  _kernel_on_diet: "true"
+  _nofallback: "false"
   _distro: "Arch"
-  _IS_GHCI: "true"
 
 jobs:
   build-kernel:
@@ -21,9 +27,28 @@ jobs:
       compiler: ${{ inputs.compiler }}
 
     runs-on: ubuntu-latest
-    container: ghcr.io/etjakeoc/tkt-arch-dev:latest
+    container: archlinux:latest
 
     steps:
+      - name: Update mirrorlist
+        run: |
+          pacman -Sy --noconfirm reflector rsync curl wget aria2
+          reflector --fastest 10 --verbose --country US --protocol rsync,https,http \
+            --latest 10 --age 1 --sort rate --save /etc/pacman.d/mirrorlist
+          if ! grep -q '^Server' /etc/pacman.d/mirrorlist; then
+            echo 'Fallback: using default mirror'
+            echo 'Server = https://mirror.rackspace.com/archlinux/$repo/os/$arch' > /etc/pacman.d/mirrorlist
+          fi
+
+      - name: Install dependencies and cleanup
+        run: |
+          pacman -Syu --needed --noconfirm \
+            base-devel bc bison clang coreutils cpio docbook-xsl flex gcc git \
+            graphviz imagemagick inetutils initramfs kmod libelf lld llvm mkinitcpio pahole \
+            patchutils perl python-sphinx python-sphinx_rtd_theme schedtool sudo \
+            tar wget xmlto xz
+          sudo rm -rf /var/cache/pacman/pkg/*
+
       - name: Checkout TKT
         uses: actions/checkout@v4
 

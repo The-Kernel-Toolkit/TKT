@@ -10,8 +10,16 @@ on:
         type: string
 
 env:
+  _processor_opt: "x86-64"
   _distro: "Suse"
-  _IS_GHCI: "true"
+  _git_mirror: "gregkh"
+  _logging_use_script: "no"
+  _install_after_building: "no"
+  _debugdisable: "true"
+  _noccache: "true"
+  _STRIP: "true"
+  _kernel_on_diet: "true"
+  _nofallback: "false"
 
 jobs:
   build-kernel:
@@ -20,9 +28,22 @@ jobs:
       compiler: ${{ inputs.compiler }}
 
     runs-on: ubuntu-latest
-    container: ghcr.io/etjakeoc/tkt-suse-dev:latest
+    container: opensuse/tumbleweed:latest
 
     steps:
+      - name: Add Python Modules repo and import GPG key
+        run: |
+          zypper --non-interactive addrepo --refresh \
+            https://download.opensuse.org/repositories/devel:languages:python/openSUSE_Tumbleweed/devel:languages:python.repo || true
+          rpm --import https://download.opensuse.org/repositories/devel:/languages:/python/openSUSE_Tumbleweed/repodata/repomd.xml.key || true
+          zypper --gpg-auto-import-keys refresh
+
+      - name: Install dependencies
+        run: |
+          zypper refresh
+          zypper --non-interactive install awk curl git
+          zypper clean -a
+
       - name: Checkout TKT
         uses: actions/checkout@v4
 
@@ -33,8 +54,7 @@ jobs:
         run: |
           git config --global --add safe.directory "$(pwd)"
           if [ "${{ inputs.compiler }}" = "llvm" ] || [ "${{ inputs.compiler }}" = "clang" ]; then
-            export KCFLAGS="-Wout-of-line-declaration"
-            export KCPPFLAGS=""
+            export KCFLAGS="$KCFLAGS -Wold-style-declaration"
           fi
           sed -i 's/^_distro=".*"/_distro="Suse"/' customization.cfg
           sed -i 's/^_compiler=".*"/_compiler="${{ inputs.compiler }}"/' customization.cfg
