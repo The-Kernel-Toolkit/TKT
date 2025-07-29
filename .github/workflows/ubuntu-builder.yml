@@ -19,8 +19,7 @@ jobs:
       _cpusched: ${{ inputs._cpusched }}
       compiler: ${{ inputs.compiler }}
 
-    runs-on: ubuntu-latest
-    container: ghcr.io/etjakeoc/tkt-ubuntu-dev:latest
+    runs-on: ghcr.io/the-kernel-toolkit/tkt-ubuntu-dev:latest
 
     steps:
       - name: Checkout TKT
@@ -32,14 +31,16 @@ jobs:
           compiler: ${{ inputs.compiler }}
           CC: x86_64-pc-linux-gnu
         run: |
+          source /etc/environment
           git config --global --add safe.directory "$(pwd)"
           if [ "${{ inputs.compiler }}" = "llvm" ] || [ "${{ inputs.compiler }}" = "clang" ]; then
-            export KCFLAGS="-Wout-of-line-declaration"
-            export KCPPFLAGS=""
+            export KCFLAGS="$KCFLAGS -Wno-error -Wno-unused-command-line-argument"
           fi
           sed -i 's/^_distro=".*"/_distro="Ubuntu"/' customization.cfg
           sed -i 's/^_compiler=".*"/_compiler="${{ inputs.compiler }}"/' customization.cfg
+          set +o pipefail
           yes '' | ./install.sh install || true
+          set -o pipefail
 
       - name: Cleanup useless DEB files
         run: rm -rf DEBS/*dbg*.deb DEBS/*libc-dev*.deb

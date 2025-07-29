@@ -529,7 +529,7 @@ _tkg_initscript() {
   if ! git status > /dev/null 2>&1; then
     warning "TKT needs to be git cloned"
     msg2 "please delete the current TKT folder and re-created it with"
-    msg2 "git clone --depth=1 https://github.com/ETJAKEOC/TKT"
+    msg2 "git clone --depth=1 https://github.com/The-Kernel-Toolkit/TKT"
     exit 1
   fi
 
@@ -575,6 +575,7 @@ _tkg_initscript() {
   if [ -n "$_custom_pkgbase" ]; then
     printf "_custom_pkgbase=\"$_custom_pkgbase\"" >> "$_where"/TKT_CONFIG
   fi
+
 }
 
 user_patcher() {
@@ -840,12 +841,9 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
 
   fi
 
-  if [ "${_configfile}" = "" ]; then
-    msg2 "Using TKT's default config file for kernel ${_basekernel}"
+  if [ -z "${_configfile}" ]; then
+    msg2 "Using archlinux's default config file for kernel ${_basekernel}"
     cat "${srcdir}"/config.x86_64 > ./.config
-  elif [ "${_configfile}" = "OpenRC" ]; then
-    msg2 "Using TKT's OpenRC config file for kernel ${_basekernel}"
-    cat "${srcdir}"/openrc-config.x86_64 > ./.config
   elif [ "${_configfile}" = "config_hardened.x86_64" ]; then
     msg2 "Using archlinux's hardened config file for kernel ${_basekernel}"
     cat "${srcdir}"/config_hardened.x86_64 > ./.config
@@ -930,7 +928,7 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
     fi
   fi
   # Clang LTO
-  if [ "$_compiler_name" = "-llvm" ]; then
+  if [[ "$_compiler_name" =~ llvm ]]; then
     if [ "$_lto_mode" = "full" ]; then
       _enable LTO_CLANG_FULL
       _disable LTO_CLANG_THIN
@@ -1619,26 +1617,20 @@ CONFIG_DEBUG_INFO_BTF_MODULES=y\r
     exit 1
   fi
 
-  if [[ "$_kernel_on_diet" == "true" && "$_kver" -lt 605 ]]; then
-    msg2 "_kernel_on_diet not implemented for kernels older than 6.5"
-    exit 1
-  fi
-
   if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
     msg2 "Using modprobed-db"
-    if [ -f "$_where"/"$_modprobeddb_db_path" ]; then
-      _modprobeddb_db_path="$_where"/"$_modprobeddb_db_path"
-    fi
-    if [ "$_kernel_on_diet" == "true" ]; then
+    if [[ "$_modprobeddb" = "true" && -f "$_where/$_modprobeddb_db_path" ]]; then
+      _modprobeddb_db_path="$_where/$_modprobeddb_db_path"
+    elif [[ "$_modprobeddb" = "false" && "$_kernel_on_diet" == "true" ]]; then
       msg2 "Using TKT diet db"
-      _modprobeddb_db_path="$_where/minimal-modprobed.db"
+      _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
     fi
-    if [ ! -f $_modprobeddb_db_path ]; then
+    if [ ! -f "$_modprobeddb_db_path" ]; then
       msg2 "modprobed-db database not found"
       exit 1
     fi
 
-    yes "" | make LSMOD=$_modprobeddb_db_path localmodconfig ${compiler_opt}
+    yes "" | make LSMOD="$_modprobeddb_db_path localmodconfig ${compiler_opt}"
   fi
 
   if [ true = "$_config_fragments" ]; then

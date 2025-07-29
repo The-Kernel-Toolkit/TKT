@@ -20,7 +20,7 @@ jobs:
       compiler: ${{ inputs.compiler }}
 
     runs-on: ubuntu-latest
-    container: ghcr.io/etjakeoc/tkt-fedora-dev:latest
+    container: ghcr.io/the-kernel-toolkit/tkt-fedora-dev:latest
 
     steps:
       - name: Checkout TKT
@@ -31,10 +31,10 @@ jobs:
           _cpusched: ${{ inputs._cpusched }}
           compiler: ${{ inputs.compiler }}
         run: |
+          source /etc/environment
           git config --global --add safe.directory "$(pwd)"
           if [ "${{ inputs.compiler }}" = "llvm" ] || [ "${{ inputs.compiler }}" = "clang" ]; then
-            export KCFLAGS="-Wout-of-line-declaration"
-            export KCPPFLAGS=""
+            export KCFLAGS="$KCFLAGS -Wno-error -Wno-unused-command-line-argument"
           fi
           sed -i 's/^_distro=".*"/_distro="Fedora"/' customization.cfg
           sed -i 's/^_compiler=".*"/_compiler="${{ inputs.compiler }}"/' customization.cfg
