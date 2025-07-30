@@ -51,8 +51,8 @@ _git_remote_names=( "${!_kernel_git_remotes[@]}" )
 
 # fill with kernel.org link if empty
 if [[ -z "$_git_mirror" ]]; then
-  msg2 "using default GregKH git remote"
-  _git_mirror="${_kernel_git_remotes['gregkh']}"
+  msg2 "using default Torvalds git remote"
+  _git_mirror="${_kernel_git_remotes['torvalds']}"
 fi
 
 # if alias, get actual link from map _kernel_git_remotes
@@ -1617,9 +1617,9 @@ CONFIG_DEBUG_INFO_BTF_MODULES=y\r
     exit 1
   fi
 
-  if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
+  if [[ "$_modprobeddb" = "true" ]]; then
     msg2 "Using modprobed-db"
-    if [[ "$_modprobeddb" = "true" && -f "$_where/$_modprobeddb_db_path" ]]; then
+    if [[ -f "$_where/$_modprobeddb_db_path" ]]; then
       _modprobeddb_db_path="$_where/$_modprobeddb_db_path"
     elif [[ "$_modprobeddb" = "false" && "$_kernel_on_diet" == "true" ]]; then
       msg2 "Using TKT diet db"
