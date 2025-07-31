@@ -842,10 +842,13 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
   fi
 
   if [ -z "${_configfile}" ]; then
-    msg2 "Using archlinux's default config file for kernel ${_basekernel}"
+    msg2 "Using TKT's default config file for kernel ${_basekernel}"
     cat "${srcdir}"/config.x86_64 > ./.config
   elif [ "${_configfile}" = "config_hardened.x86_64" ]; then
-    msg2 "Using archlinux's hardened config file for kernel ${_basekernel}"
+    msg2 "Using TKT's OpenRC config file for kernel ${_basekernel}"
+    cat "${srcdir}"/config_openrc.x86_64 > ./.config
+      elif [ "${_configfile}" = "config_hardened.x86_64" ]; then
+    msg2 "Using TKT's hardened config file for kernel ${_basekernel}"
     cat "${srcdir}"/config_hardened.x86_64 > ./.config
   elif [ "${_configfile}" = "running-kernel" ]; then
     if [ -f /boot/config-`uname -r` ];then
@@ -1035,6 +1038,26 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
   msg2 "Setting cpu micro architecture to $_processor_opt"
 
   echo "_processor_opt='$_processor_opt'" >> "$_where"/TKT_CONFIG
+
+  # modprobed-db
+
+  if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
+    if [[ "$_modprobeddb" = "true" && "$_kernel_on_diet" == "true" ]]; then
+      msg2 "_modprobeddb and _kernel_on_diet cannot be used together: it doesn't make sense, _kernel_on_diet uses our own modprobed list ;)"
+      exit 1
+    elif [[ -f "$_where/$_modprobeddb_db_path" ]]; then
+      _modprobeddb_db_path="$_where/$_modprobeddb_db_path"
+    elif [[ "$_modprobeddb" = "true" && "$_kernel_on_diet" == "false" ]]; then
+      msg2 "Using modprobed-db"
+      _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
+    elif [[ "$_modprobeddb" = "false" && "$_kernel_on_diet" == "true" ]]; then
+      msg2 "Using TKT diet db"
+      _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
+    elif [ ! -f "$_modprobeddb_db_path" ]; then
+      msg2 "modprobed-db database not found"
+      exit 1
+    fi
+  fi
 
   # Disable some debugging
   if [ "${_debugdisable}" = "true" ]; then
@@ -1610,29 +1633,6 @@ CONFIG_DEBUG_INFO_BTF_MODULES=y\r
     #make prepare ${compiler_opt}
   fi
 
-  # modprobed-db
-
-  if [[ "$_modprobeddb" = "true" && "$_kernel_on_diet" == "true" ]]; then
-    msg2 "_modprobeddb and _kernel_on_diet cannot be used together: it doesn't make sense, _kernel_on_diet uses our own modprobed list ;)"
-    exit 1
-  fi
-
-  if [[ "$_modprobeddb" = "true" ]]; then
-    msg2 "Using modprobed-db"
-    if [[ -f "$_where/$_modprobeddb_db_path" ]]; then
-      _modprobeddb_db_path="$_where/$_modprobeddb_db_path"
-    elif [[ "$_modprobeddb" = "false" && "$_kernel_on_diet" == "true" ]]; then
-      msg2 "Using TKT diet db"
-      _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
-    fi
-    if [ ! -f "$_modprobeddb_db_path" ]; then
-      msg2 "modprobed-db database not found"
-      exit 1
-    fi
-
-    yes "" | make LSMOD="$_modprobeddb_db_path localmodconfig ${compiler_opt}"
-  fi
-
   if [ true = "$_config_fragments" ]; then
     local fragments=()
     mapfile -d '' -t fragments < <(find "$_where"/ -type f -name "*.myfrag" -print0 | sort -z)
@@ -1664,7 +1664,13 @@ CONFIG_DEBUG_INFO_BTF_MODULES=y\r
 
   # rewrite configuration
   msg2 "Setting config"
-  make ${_config_updating} ${compiler_opt} |& tee -a "$_where"/logs/prepare.log.txt
+  if [[ "$_compiler_name" =~ llvm ]]; then
+    CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+    make ${_config_updating} ${compiler_opt} |& tee -a "$_where"/logs/prepare.log.txt
+  elif [[ "$_compiler_name" =~ gcc ]]; then
+    CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
+    make ${_config_updating} ${compiler_opt} |& tee -a "$_where"/logs/prepare.log.txt
+  fi
 
   # Modify the kernel config file to fit Fedora SELinux configuration
   if [ "$_distro" = "Fedora" ] ; then

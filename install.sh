@@ -40,6 +40,27 @@ if [ -e "$_EXT_CONFIG_PATH" ]; then
   source "$_EXT_CONFIG_PATH"
 fi
 
+  # modprobed-db
+
+  if [[ "$_modprobeddb" = "true" && "$_kernel_on_diet" == "true" ]]; then
+    msg2 "_modprobeddb and _kernel_on_diet cannot be used together: it doesn't make sense, _kernel_on_diet uses our own modprobed list ;)"
+    exit 1
+  fi
+
+  if [[ "$_modprobeddb" = "true" ]]; then
+    msg2 "Using modprobed-db"
+    if [[ -f "$_where/$_modprobeddb_db_path" ]]; then
+      _modprobeddb_db_path="$_where/$_modprobeddb_db_path"
+    elif [[ "$_modprobeddb" = "false" && "$_kernel_on_diet" == "true" ]]; then
+      msg2 "Using TKT diet db"
+      _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
+    fi
+    if [ ! -f "$_modprobeddb_db_path" ]; then
+      msg2 "modprobed-db database not found"
+      exit 1
+    fi
+  fi
+
 . current_env
 source kconfigs/prepare
 _build_dir="$_kernel_work_folder_abs/.."
@@ -204,10 +225,28 @@ _gen_kern_name() {
 
   # Condense repeated make flags
   _make() {
+    # Modules
+    if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
+      if [[ "$_compiler_name" =~ llvm ]]; then
+        msg2 "Building diet kernel..."
+        time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+        make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+      elif [[ "$_compiler_name" =~ gcc ]]; then
+        msg2 "Building diet kernel..."
+        time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
+        make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+      fi
+    fi
+
+    # Kernels
     if [ "$1" = "verbose" ]; then
-      time make V=2 ${compiler_opt} -j ${_thread_num} "$@"
+      msg2 "Building kernel..."
+      (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+        make V=2 "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
     else
-      time make ${compiler_opt} -j ${_thread_num} "$@"
+      msg2 "Building kernel..."
+      (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+        make "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
     fi
   }
 

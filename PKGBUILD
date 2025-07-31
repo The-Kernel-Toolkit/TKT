@@ -132,17 +132,91 @@ build() {
     export KCPPFLAGS
     export KCFLAGS
 
+  if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
+    if [[ "$_compiler_name" =~ llvm ]]; then
+      msg2 "Building diet kernel..."
+      time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+      make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" 2>&1 ) 3>&1 1>&2 2>&3
+    elif [[ "$_compiler_name" =~ gcc ]]; then
+      msg2 "Building diet kernel..."
+      time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
+      make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" 2>&1 ) 3>&1 1>&2 2>&3
+    fi
+  fi
+
   # Setup "llvm_opts" if compiling using clang
   if [[ "$_compiler_name" =~ llvm ]]; then
+      msg2 "Building kernel..."
     time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
     make ${_force_all_threads} ${llvm_opt} bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
   elif [[ "$_compiler_name" =~ gcc ]]; then
+      msg2 "Building kernel..."
     time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
-    make ${_force_all_threads} bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
+    make ${_force_all_threads} ${compiler_opt} bzImage modules 2>&1 ) 3>&1 1>&2 2>&3
   fi
     return 0
   )
 }
+
+_gen_kern_name() {
+  # Uppercase characters are not allowed in source package name for debian based distros
+  if [[ "$_distro" =~ ^(Debian|Mint|Ubuntu)$ && "$_cpusched" = "MuQSS" ]]; then
+    _cpusched="muqss"
+  fi
+
+  if [ -z "$_kernel_localversion" ]; then
+    # Build optional parts
+    _diet_tag=""
+    _modprobed_tag=""
+    _rt_tag=""
+    _compiler_name=""
+
+    [ "$_kernel_on_diet" = "true" ] && _diet_tag="diet"
+    [ "$_modprobeddb" = "true" ] && _modprobed_tag="modprobed"
+    [ "$_preempt_rt" = "1" ] && _rt_tag="rt"
+
+    if [ "$_compiler" = "llvm" ]; then
+      _compiler_name="llvm"
+    else
+      _compiler_name="gcc"
+    fi
+
+    # Start parts array
+    parts=( "tkt" )
+
+    # Detect distro and append to kernel name
+    shopt -s nocasematch
+    if [[ "$_distro" =~ Arch ]]; then
+      parts+=( "$(echo "$_distro" | tr '[:upper:]' '[:lower:]')" )
+    fi
+    shopt -u nocasematch
+
+    # Append tags to kernel name as needed
+    [ -n "$_diet_tag" ] && parts+=( "$_diet_tag" )
+    [ -n "$_modprobed_tag" ] && parts+=( "$_modprobed_tag" )
+    parts+=( "$_cpusched" )
+    [ -n "$_rt_tag" ] && parts+=( "$_rt_tag" )
+    parts+=( "$_compiler_name" )
+
+    _kernel_flavor=$(IFS=- ; echo "${parts[*]}")
+
+  else
+    _kernel_flavor="tkt-${_kernel_localversion}"
+  fi
+
+  # Setup kernel_subver variable
+  if [[ "$_sub" = rc* ]]; then
+    # if an RC version, subver will always be 0
+    _kernel_subver=0
+  else
+    _kernel_subver="${_sub}"
+  fi
+
+  # Generate kernel name once, re-used everywhere
+  _kernelname="${_basekernel}.${_sub}-${_kernel_flavor}"
+  _kernelname_rpm="${_basekernel}.${_sub}-${_kernel_flavor//-/_}"
+}
+
 hackbase() {
   source "$_where"/TKT_CONFIG
 
@@ -156,9 +230,9 @@ hackbase() {
               'nvidia-dkms-tkg: NVIDIA drivers for all installed kernels - dkms version. From TK-Glitch.'
               'update-grub: Simple wrapper around grub-mkconfig.')
   if [ -e "${srcdir}/ntsync.rules" ]; then
-    provides=("linux=${pkgver}" "${pkgbase}" VIRTUALBOX-GUEST-MODULES WIREGUARD-MODULE NTSYNC-MODULE ntsync-header)
+    provides=("linux=${pkgver}-${_kernelname}" "${pkgbase}" VIRTUALBOX-GUEST-MODULES WIREGUARD-MODULE NTSYNC-MODULE ntsync-header)
   else
-    provides=("linux=${pkgver}" "${pkgbase}" VIRTUALBOX-GUEST-MODULES WIREGUARD-MODULE)
+    provides=("linux=${pkgver}-${_kernelname}" "${pkgbase}" VIRTUALBOX-GUEST-MODULES WIREGUARD-MODULE)
   fi
   replaces=(virtualbox-guest-modules-arch wireguard-arch)
 
@@ -263,7 +337,7 @@ hackheaders() {
   source "$_where"/TKT_CONFIG
 
   pkgdesc="Headers and scripts for building modules for the $pkgdesc kernel"
-  provides=("linux-headers=${pkgver}" "${pkgbase}-headers=${pkgver}")
+  provides=("linux-headers=${pkgver}-${_kernelname}" "${pkgbase}-headers=${pkgver}-${_kernelname}")
   case $_basever in
     54|57|58|59|510)
     ;;
