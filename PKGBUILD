@@ -292,11 +292,11 @@ hackbase() {
   msg2 "Checking if the installed kernel is a Unified Kernel Image (UKI)..."
   if _is_uki "$modulesdir/vmlinuz"; then
     msg2 "Unified Kernel Image detected, updating mkinitcpio preset..."
-    
+
     # Create or update the mkinitcpio preset file
     local preset_file="${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
     mkdir -p "${pkgdir}/etc/mkinitcpio.d"
-    
+
     # Write a UKI-compatible preset
     cat > "$preset_file" <<EOF
 # mkinitcpio preset file for ${pkgbase} (UKI configuration)
@@ -313,11 +313,11 @@ EOF
     msg2 "Updated mkinitcpio preset file at ${preset_file} for UKI"
   else
     msg2 "No Unified Kernel Image detected, using standard preset configuration..."
-    
+
     # Create a standard preset file (if needed)
     local preset_file="${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
     mkdir -p "${pkgdir}/etc/mkinitcpio.d"
-    
+
     cat > "$preset_file" <<EOF
 # mkinitcpio preset file for ${pkgbase}
 
