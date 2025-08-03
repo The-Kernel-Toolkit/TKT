@@ -74,4 +74,4 @@ jobs:
           kver="${{ steps.upstream-config.outputs.kver }}"
           git add "kconfigs/${kver}/config.*"
           git commit -am "Update ${kver} kernel config for ${{ matrix.compiler }} to ${{ steps.upstream-config.outputs.latest }}"
-          git push https://${{ secrets.PAT_TOKEN }}@github.com/ETJAKEOC/TKT.git
+          git push

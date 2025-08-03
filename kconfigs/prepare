@@ -844,7 +844,7 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
   if [ -z "${_configfile}" ]; then
     msg2 "Using TKT's default config file for kernel ${_basekernel}"
     cat "${srcdir}"/config.x86_64 > ./.config
-  elif [ "${_configfile}" = "config_hardened.x86_64" ]; then
+  elif [ "${_configfile}" = "OpenRC" ]; then
     msg2 "Using TKT's OpenRC config file for kernel ${_basekernel}"
     cat "${srcdir}"/config_openrc.x86_64 > ./.config
       elif [ "${_configfile}" = "config_hardened.x86_64" ]; then

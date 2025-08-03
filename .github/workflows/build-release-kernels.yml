@@ -23,7 +23,7 @@ jobs:
         run: |
           get_latest_kernel() {
             git -c 'versionsort.suffix=-' \
-            ls-remote --exit-code --refs --sort='version:refname' --tags https://github.com/gregkh/linux.git '*.*' \
+            ls-remote --exit-code --refs --sort='version:refname' --tags https://github.com/torvalds/linux.git '*.*' \
             | cut --delimiter='/' --fields=3 | grep "$1" | tail -n 1
           }
           grep "_current_kernels=(" kconfigs/prepare > current_kernels.txt
@@ -82,7 +82,7 @@ jobs:
 
           🚀 This is intended for power users, performance tuners, and minimalists who want a no-bullshit kernel built for responsiveness and control.
 
-          Feedback, issues, or patches? [Open an issue](https://github.com/ETJAKEOC/TKT/issues)."
+          Feedback, issues, or patches? [Open an issue](https://github.com/The-Kernel-Toolkit/TKT/issues)."
 
           gh release create "$dynamic_tag" $files_list --latest \
             --title "TKT ${dynamic_tag} — GHCI Prebuilt Diet Kernel" \

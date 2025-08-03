@@ -12,8 +12,8 @@ pkgdesc='A customized Linux kernel install script, forked from the TKG script, a
 arch=('x86_64') # no i686 in here
 url="https://www.kernel.org/"
 license=('GPL2')
-makedepends=(base-devel bc bison clang coreutils cpio docbook-xsl flex gcc git \
-graphviz imagemagick inetutils  initramfs kmod libelf lld llvm pahole \
+makedepends=(base-devel bc bison coreutils cpio docbook-xsl flex git \
+graphviz imagemagick inetutils initramfs kmod libelf pahole \
 patchutils perl python-sphinx python-sphinx_rtd_theme schedtool sudo \
 tar wget xmlto xz)
 if [[ "$_compiler_name" =~ llvm ]]; then
