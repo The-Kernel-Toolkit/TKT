@@ -20,9 +20,9 @@
 #### Please check the release tab for the specific kernel of your choosing.
 #### All kernel builds tested in a VM install.
 
-- If you like the work I do here, and want to donate to me/the project, checkout the [DONATIONS.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/DOCS/DONATIONS.md) file.
-- Please checkout the [CONTRIBUTIONS_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/DOCS/CONTRIBUTION_GUIDELINE.md) file for information about collaboration or how to help the project in general.
-- Please read the [COMPILATION_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/DOCS/COMPILATION_GUIDELINE.md) file for information about how to run the script and compile your own kernel.
+- If you like the work I do here, and want to donate to me/the project, checkout the [DONATIONS.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/DONATIONS.md) file.
+- Please checkout the [CONTRIBUTIONS_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/CONTRIBUTION_GUIDELINE.md) file for information about collaboration or how to help the project in general.
+- Please read the [COMPILATION_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/COMPILATION_GUIDELINE.md) file for information about how to run the script and compile your own kernel.
 
 This repository provides scripts to automatically download, patch and compile the Linux Kernel from [the official Linux git repository](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git), with a selection of patches aiming for better desktop/gaming experience. The provided patches can be enabled/disabled by editing the `customization.cfg` file and/or by following the interactive install script. You can use an external config file (default is `$HOME/.config/TKT.cfg`, tweakable with the `_EXT_CONFIG_PATH` variable in `customization.cfg`). You can also use your own patches (more information in `customization.cfg` file).
 
