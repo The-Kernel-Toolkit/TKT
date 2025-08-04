@@ -10,10 +10,6 @@ on:
         required: true
         type: string
 
-env:
-  _distro: "Arch"
-  _IS_GHCI: "true"
-
 jobs:
   build-kernel:
     env:
@@ -24,14 +20,6 @@ jobs:
     container: ghcr.io/the-kernel-toolkit/tkt-arch-dev:latest
 
     steps:
-      - name: Checkout TKT
-        uses: actions/checkout@v4
-
-      - name: Prepare for makepkg
-        run: |
-          useradd user -G wheel && echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
-          chown user -R {../,./}
-
       - name: Adjust compiler and compile Kernel
         env:
           _cpusched: ${{ inputs._cpusched }}
@@ -40,7 +28,7 @@ jobs:
           source /etc/environment
           git config --global --add safe.directory "$(pwd)"
           sed -i 's/^_compiler=".*"/_compiler="${{ inputs.compiler }}"/' customization.cfg
-          su --preserve-environment user -c "yes '' | makepkg --noconfirm -s"
+          su --preserve-environment TKT -c "yes '' | makepkg --noconfirm -s"
 
       - name: Package PKG files to $arch-linux format
         run: |
