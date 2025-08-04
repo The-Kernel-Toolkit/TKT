@@ -50,6 +50,8 @@ jobs:
     with:
       _cpusched: ${{ matrix._cpusched }}
       compiler: ${{ matrix.compiler }}
+      kernel_attribute: ${{ matrix.kernel_attribute }}
+      tkt_cache_name: ${{ matrix.tkt_cache_name }}
       os: ${{ matrix.os }}
 
   make-release:
