@@ -34,15 +34,6 @@ jobs:
       compiler: ${{ inputs.compiler }}
     if: inputs.os == 'fedora'
 
-  dispatch-to-nixos:
-    uses: ./.github/workflows/nixos-builder.yml
-    with:
-      _cpusched: ${{ inputs._cpusched }}
-      compiler: ${{ inputs.compiler }}
-      kernel_attribute: ${{ inputs.kernel_attribute }}
-      tkt_cache_name: ${{ inputs.tkt_cache_name }}
-    if: inputs.os == 'nixos'
-
   dispatch-to-slackware:
     uses: ./.github/workflows/slackware-builder.yml
     with:
