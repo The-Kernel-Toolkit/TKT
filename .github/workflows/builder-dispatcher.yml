@@ -11,14 +11,6 @@ on:
       compiler:
         required: true
         type: string
-      kernel_attribute:
-        description: 'The flake attribute to build (e.g., linux_6_15-tkt)'
-        required: true
-        type: string
-      tkt_cache_name:
-        description: 'The name of the cachix cache to push to'
-        required: true
-        type: string
 
 jobs:
   dispatch-to-arch:
