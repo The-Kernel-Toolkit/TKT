@@ -22,9 +22,6 @@ jobs:
     container: ghcr.io/the-kernel-toolkit/tkt-debian-dev:latest
 
     steps:
-      - name: Checkout TKT
-        uses: actions/checkout@v4
-
       - name: Adjust compiler and compile Kernel
         env:
           _cpusched: ${{ inputs._cpusched }}
