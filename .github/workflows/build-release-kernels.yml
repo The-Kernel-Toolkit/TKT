@@ -43,6 +43,8 @@ jobs:
       matrix:
         _cpusched: [eevdf, bore]
         compiler: [gcc, llvm]
+        kernel_attribute: 'linux_6_15-tkt'
+        tkt_cache_name: 'tkt-cache'
         os: [arch, debian, fedora, nixos, slackware, suse, ubuntu]
     uses: ./.github/workflows/builder-dispatcher.yml
     with:
