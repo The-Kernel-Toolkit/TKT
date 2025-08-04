@@ -26,9 +26,8 @@ jobs:
           compiler: ${{ inputs.compiler }}
         run: |
           source /etc/environment
-          git config --global --add safe.directory "$(pwd)"
           sed -i 's/^_compiler=".*"/_compiler="${{ inputs.compiler }}"/' customization.cfg
-          su --preserve-environment TKT -c "yes '' | makepkg --noconfirm -s"
+          yes '' | makepkg --noconfirm -s
 
       - name: Package PKG files to $arch-linux format
         run: |
