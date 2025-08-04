@@ -11,6 +11,14 @@ on:
       compiler:
         required: true
         type: string
+      kernel_attribute:
+        description: 'The flake attribute to build (e.g., linux_6_15-tkt)'
+        required: true
+        type: string
+      tkt_cache_name:
+        description: 'The name of the cachix cache to push to'
+        required: true
+        type: string
 
 jobs:
   dispatch-to-arch:
@@ -39,6 +47,8 @@ jobs:
     with:
       _cpusched: ${{ inputs._cpusched }}
       compiler: ${{ inputs.compiler }}
+      kernel_attribute: ${{ inputs.kernel_attribute }}
+      tkt_cache_name: ${{ inputs.tkt_cache_name }}
     if: inputs.os == 'nixos'
 
   dispatch-to-slackware:
