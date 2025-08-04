@@ -43,7 +43,7 @@ jobs:
       matrix:
         _cpusched: [eevdf, bore]
         compiler: [gcc, llvm]
-        os: [arch, debian, fedora, slackware, suse, ubuntu]
+        os: [arch, debian, fedora, nixos, slackware, suse, ubuntu]
     uses: ./.github/workflows/builder-dispatcher.yml
     with:
       _cpusched: ${{ matrix._cpusched }}
