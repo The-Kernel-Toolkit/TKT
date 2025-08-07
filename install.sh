@@ -34,6 +34,7 @@ if [[ -z "$SCRIPT" ]]; then
 fi
 
 echo "HOME: $HOME"
+ls -a $HOME
 
 source customization.cfg
 
