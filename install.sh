@@ -225,45 +225,38 @@ _gen_kern_name() {
 
   # Condense repeated make flags
   _make() {
-    # Modules
-    if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
-      if [[ "$_compiler_name" =~ llvm ]]; then
-        msg2 "Building diet kernel..."
-        time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
-        make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-      elif [[ "$_compiler_name" =~ llvm && "$1" = "verbose" ]]; then
-        msg2 "Building diet kernel..."
-        time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
-        make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-      elif [[ "$_compiler_name" =~ gcc ]]; then
-        msg2 "Building diet kernel..."
-        time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
-        make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-      elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
-        msg2 "Building diet kernel..."
-        time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
-        make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-      fi
+    # Define compiler-specific variables locally. This is robust and avoids scope issues.
+    local make_vars_llvm="CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1"
+    local make_vars_gcc="CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip"
+    local make_vars=""
+    local make_opts="${_force_all_threads}"
+
+    # Set the correct string of environment variables based on the compiler name.
+    if [[ "$_compiler_name" =~ llvm ]]; then
+      make_vars=$make_vars_llvm
+    else
+      make_vars=$make_vars_gcc
     fi
 
-    # Kernels
-     if [[ "$_compiler_name" =~ llvm ]]; then
-       msg2 "Building kernel..."
-         time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
-         make "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-    elif [[ "$_compiler_name" =~ llvm && "$1" = "verbose" ]]; then
-       msg2 "Building kernel..."
-         time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
-         make V=2 "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-    elif [[ "$_compiler_name" =~ gcc ]]; then
-       msg2 "Building kernel..."
-         time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
-         make "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-    elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
-       msg2 "Building kernel..."
-         time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
-         make V=2 "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
-     fi
+    # Handle the 'verbose' argument cleanly.
+    if [[ "$1" == "verbose" ]]; then
+      make_opts="V=2 ${make_opts}"
+      shift # Consume 'verbose' so it's not passed to make as a target.
+    fi
+
+    # This structure ensures we only run ONE make command per call.
+    if [[ "$_modprobeddb" == "true" || "$_kernel_on_diet" == "true" ]]; then
+      msg2 "Building diet kernel..."
+      # Note the single quotes around the LSMOD value to protect it
+      make_opts="LSMOD='$_modprobeddb_db_path localmodconfig' ${make_opts}"
+    else
+      msg2 "Building kernel..."
+    fi
+
+    # Execute the single, correctly constructed command.
+    # The 'eval' safely tokenizes the make_vars string into environment variables for the command.
+    # The 3>&1 1>&2 2>&3 trick swaps stdout and stderr so 'time' output goes to the console.
+    time (eval $make_vars make $make_opts "$@" 2>&1) 3>&1 1>&2 2>&3
   }
 
   # Copy winesync header if present
