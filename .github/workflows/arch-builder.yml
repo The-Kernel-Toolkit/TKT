@@ -20,6 +20,14 @@ jobs:
     container: ghcr.io/the-kernel-toolkit/tkt-arch-dev:latest
 
     steps:
+      - name: Checkout TKT
+        uses: actions/checkout@v4
+
+      - name: Prepare for makepkg
+        run: |
+          useradd user -G wheel && echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+          chown user -R {../,./}
+
       - name: Adjust compiler and compile Kernel
         env:
           _cpusched: ${{ inputs._cpusched }}
@@ -27,7 +35,7 @@ jobs:
         run: |
           source /etc/environment
           sed -i 's/^_compiler=".*"/_compiler="${{ inputs.compiler }}"/' customization.cfg
-          yes '' | makepkg --noconfirm -s
+          su --preserve-environment user -c "yes '' | makepkg --noconfirm -s"
 
       - name: Package PKG files to $arch-linux format
         run: |

@@ -21,7 +21,11 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       GIT_SSL_CAINFO: /etc/ssl/certs/ca-certificates.crt
+
     steps:
+      - name: Checkout TKT
+        uses: actions/checkout@v4
+
       - name: Adjust compiler and compile Kernel
         shell: bash
         env:
