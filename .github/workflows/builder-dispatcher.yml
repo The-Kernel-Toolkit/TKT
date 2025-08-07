@@ -54,3 +54,24 @@ jobs:
       _cpusched: ${{ inputs._cpusched }}
       compiler: ${{ inputs.compiler }}
     if: inputs.os == 'ubuntu'
+    
+  dispatch-to-gentoo-openrc:
+    uses: ./.github/workflows/gentoo-openrc-builder.yml
+    with:
+      _cpusched: ${{ inputs._cpusched }}
+      compiler: ${{ inputs.compiler }}
+    if: inputs.os == 'gentoo-openrc'
+    
+  dispatch-to-gentoo-systemd:
+    uses: ./.github/workflows/gentoo-systemd-builder.yml
+    with:
+      _cpusched: ${{ inputs._cpusched }}
+      compiler: ${{ inputs.compiler }}
+    if: inputs.os == 'gentoo-systemd'
+    
+  dispatch-to-gentoo-musl:
+    uses: ./.github/workflows/gentoo-musl-builder.yml
+    with:
+      _cpusched: ${{ inputs._cpusched }}
+      compiler: ${{ inputs.compiler }}
+    if: inputs.os == 'gentoo-musl' 

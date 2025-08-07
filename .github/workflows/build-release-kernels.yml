@@ -43,7 +43,7 @@ jobs:
       matrix:
         _cpusched: [eevdf, bore]
         compiler: [gcc, llvm]
-        os: [arch, debian, fedora, nixos, slackware, suse, ubuntu]
+        os: [arch, debian, fedora, nixos, slackware, suse, ubuntu, gentoo-openrc, gentoo-systemd, gentoo-musl]
     uses: ./.github/workflows/builder-dispatcher.yml
     with:
       _cpusched: ${{ matrix._cpusched }}
@@ -73,7 +73,7 @@ jobs:
           This release includes **24 precompiled Linux kernel images**, built using the latest upstream kernel \`$latest_kernel\`, configured with TKT’s \`_kernel_on_diet\` mode for lightweight performance and minimal bloat.
 
           🔧 **What's included:**
-          - 💻 **Distros (and their derivitives):** Arch, Debian, Fedora, Slackware, SUSE, Ubuntu
+          - 💻 **Distros (and their derivitives):** Arch, Debian, Fedora, Slackware, SUSE, Ubuntu, Gentoo
           - 🧠 **Compilers:** GCC & LLVM/Clang
           - ⚙ **Schedulers:** EEVDF & BORE
           - 🧩 **Total Builds:** 6 distros × 2 compilers × 2 schedulers = **24 unique kernel builds**
