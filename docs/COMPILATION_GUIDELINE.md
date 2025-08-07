@@ -139,4 +139,4 @@ This is a crash course guide to get you comfortable working with the TꓘT kerne
 
 ## SUPPORT:
 
-If all else has failed, you can find us at our [The ꓘernel Toolkit](https://discord.gg/c9h5Ganv) Official Discord Server. Please feel free to join us, and someone will be along to assist you when they can.
+If all else has failed, you can find us at our [The ꓘernel Toolkit](https://discord.gg/eEWrFv58pF) Official Discord Server. Please feel free to join us, and someone will be along to assist you when they can.

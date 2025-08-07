@@ -1,6 +1,8 @@
 # CONTRIBUTION GUIDELINE
 ### These are the basic contribution guidelines for the project.
 
+**From: ETJAKEOC**
+
 I am not all *that* picky about how this project evolves, I have a simple policy/goal with this project;
 > Don't complicate it too much, but make the most performant kernel we can, without breaking generic support.
 > I'm looking for patches that can be applied on a generic scale, something that will benefit everyone, 
@@ -44,7 +46,7 @@ Below is a checklist of platform-specific compile goals for this project. These 
 
 If you are interested in contributing to this project, please, feel free to fork it, and do some work.
 
-You can contact the TꓘT team at our [Official Discord Server](https://discord.gg/c9h5Ganv)
+You can contact the TꓘT team at our [Official Discord Server](https://discord.gg/eEWrFv58pF)
 
 Thank you for taking the time to read this, and I hope you enjoy the work.
 

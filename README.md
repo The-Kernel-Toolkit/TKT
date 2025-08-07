@@ -20,7 +20,7 @@
 #### Please check the release tab for the specific kernel of your choosing.
 #### All kernel builds tested in a VM install.
 
-- If you like the work I do here, and want to donate to me/the project, checkout the [DONATIONS.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/DONATIONS.md) file.
+- If you like the work We do here, and want to donate to me/the project, checkout the [DONATIONS.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/DONATIONS.md) file.
 - Please checkout the [CONTRIBUTIONS_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/CONTRIBUTION_GUIDELINE.md) file for information about collaboration or how to help the project in general.
 - Please read the [COMPILATION_GUIDELINE.MD](https://github.com/The-Kernel-Toolkit/TKT/blob/main/docs/COMPILATION_GUIDELINE.md) file for information about how to run the script and compile your own kernel.
 
@@ -177,5 +177,5 @@ This has not been tested on all systems, results may vary, you may have to adapt
 
 #### Support
 
-If all else has failed, you can find us at our [The ꓘernel Toolkit](https://discord.gg/c9h5Ganv) Official Discord Server.
+If all else has failed, you can find us at our [The ꓘernel Toolkit](https://discord.gg/eEWrFv58pF) Official Discord Server.
 Please feel free to join us, and someone will be along to assist you when they can.
