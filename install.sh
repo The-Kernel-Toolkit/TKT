@@ -206,7 +206,7 @@ _gen_kern_name() {
     parts+=( "$_cpusched" )
     [ -n "$_rt_tag" ] && parts+=( "$_rt_tag" )
     parts+=( "$_compiler_name" )
-${compiler_opt}
+#${compiler_opt}
     _kernel_flavor=$(IFS=- ; echo "${parts[*]}")
 
   else
