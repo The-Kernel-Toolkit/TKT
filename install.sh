@@ -267,7 +267,12 @@ _gen_kern_name() {
 
     if [[ "$_distro" =~ ^(Fedora|Suse)$ ]]; then
       _search_dir="$_fedora_work_dir/RPMS/x86_64"
+      echo "SEARCH DIR"
+      echo _search_dir
+      
       mkdir -p "$_where/${_kernelname_rpm}"
+      echo "PATH TO MV TO:"
+      echo "$_where/${_kernelname_rpm}"
     else
       _search_dir="$_where"
       mkdir -p "$_where/${_kernelname}"
