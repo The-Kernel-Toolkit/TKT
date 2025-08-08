@@ -244,11 +244,11 @@ _gen_kern_name() {
     # Kernels
     if [ "$1" = "verbose" ]; then
       msg2 "Building kernel..."
-      (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+      (LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
         make V=2 "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
     else
       msg2 "Building kernel..."
-      (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
+      (LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
         make "${_force_all_threads}" "${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
     fi
   }
