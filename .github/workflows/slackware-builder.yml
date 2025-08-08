@@ -32,8 +32,6 @@ jobs:
           _cpusched: ${{ inputs._cpusched }}
           compiler: ${{ inputs.compiler }}
         run: |
-          mkdir -p /github/home/.config
-          cp /TKT.cfg /github/home/.config/
           source /etc/environment
           git config --global --add safe.directory "$(pwd)"
           git config --global http.sslCAInfo /etc/ssl/certs/ca-certificates.crt
