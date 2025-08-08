@@ -233,7 +233,7 @@ _gen_kern_name() {
       if [[ "$_compiler_name" =~ llvm ]]; then
         msg2 "Building diet kernel..."
         time (CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=1 \
-        make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+        make -mretpoline LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
       elif [[ "$_compiler_name" =~ gcc ]]; then
         msg2 "Building diet kernel..."
         time (CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip \
