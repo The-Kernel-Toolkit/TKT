@@ -234,32 +234,32 @@ _gen_kern_name() {
     if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
       if [[ "$_compiler_name" =~ llvm ]]; then
         msg2 "Building diet kernel..."
-        time ("${compiler_opt}" make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+        time env ${compiler_opt} make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
       elif [[ "$_compiler_name" =~ llvm && "$1" = "verbose" ]]; then
         msg2 "Building diet kernel..."
-        time ("${compiler_opt}" make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+        time env ${compiler_opt} make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
       elif [[ "$_compiler_name" =~ gcc ]]; then
         msg2 "Building diet kernel..."
-        time ("${compiler_opt}" make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+        time env ${compiler_opt} make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
       elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
         msg2 "Building diet kernel..."
-        time ("${compiler_opt}" make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+        time env ${compiler_opt} make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
       fi
     fi
 
     # Kernels
      if [[ "$_compiler_name" =~ llvm ]]; then
        msg2 "Building kernel..."
-         time ("${compiler_opt}" make "${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+       time env ${compiler_opt} make "${_force_all_threads}" "$@"
     elif [[ "$_compiler_name" =~ llvm && "$1" = "verbose" ]]; then
        msg2 "Building kernel..."
-         time ("${compiler_opt}" make V=2 "${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+       time env ${compiler_opt} make V=2 "${_force_all_threads}" "$@"
     elif [[ "$_compiler_name" =~ gcc ]]; then
        msg2 "Building kernel..."
-         time ("${compiler_opt}" make "${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+       time env ${compiler_opt} make "${_force_all_threads}" "$@"
     elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
        msg2 "Building kernel..."
-         time ("${compiler_opt}" make V=2 "${_force_all_threads}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
+       time env ${compiler_opt} make V=2 "${_force_all_threads}" "$@"
      fi
   }
 
