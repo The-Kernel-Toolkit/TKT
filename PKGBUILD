@@ -32,8 +32,12 @@ _where="$PWD"
 
 # Clear TKT_CONFIG and save all settings in it fresh again
 if [ ! -e "$_where"/TKT_CONFIG ]; then
-
-  cp "$_where"/customization.cfg "$_where"/TKT_CONFIG
+  if [ "$_IS_GHCI" = "true" ]; then
+    msg2 "Overriding config options for GHCI build"
+    source "/GHCI.cfg"
+  else
+    cp "$_where"/customization.cfg "$_where"/TKT_CONFIG
+  fi
 
   # extract and define value of _EXT_CONFIG_PATH from customization file
   if [[ -z "$_EXT_CONFIG_PATH" ]]; then
