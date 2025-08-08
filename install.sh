@@ -65,7 +65,7 @@ fi
   fi
 
 . current_env
-source kconfigs/prepare
+#source kconfigs/prepare
 _build_dir="$_kernel_work_folder_abs/.."
 export KCPPFLAGS
 export KCFLAGS
