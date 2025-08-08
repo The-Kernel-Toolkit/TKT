@@ -232,7 +232,7 @@ _gen_kern_name() {
     if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
       if [[ "$_compiler_name" =~ llvm ]]; then
         msg2 "Building diet kernel..."
-        time (CPP=clang-cpp CXX=clang++ RANLIB=llvm-ranlib AS=llvm-as OBJCOPY=llvm-objcopy LLVM=1 LLVM_IAS=1 \
+        time (RANLIB=llvm-ranlib AS=llvm-as OBJCOPY=llvm-objcopy LLVM=1 LLVM_IAS=1 \
         make -mretpoline LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads} ${compiler_opt}" "$@" 2>&1 ) 3>&1 1>&2 2>&3
       elif [[ "$_compiler_name" =~ gcc ]]; then
         msg2 "Building diet kernel..."
