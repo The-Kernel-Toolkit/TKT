@@ -26,7 +26,7 @@ jobs:
       - name: Install dependencies and cleanup
         run: |
           yes '' | dnf upgrade --assumeyes
-          dnf install --assumeyes  --skip-unavailable curl git clang lld
+          dnf install --assumeyes  --skip-unavailable curl git clang lld llvm
       
       - name: Checkout TKT
         uses: actions/checkout@v4
