@@ -34,13 +34,6 @@ jobs:
       compiler: ${{ inputs.compiler }}
     if: inputs.os == 'fedora'
 
-  dispatch-to-gentoo-musl:
-    uses: ./.github/workflows/gentoo-musl-builder.yml
-    with:
-      _cpusched: ${{ inputs._cpusched }}
-      compiler: ${{ inputs.compiler }}
-    if: inputs.os == 'gentoo-musl'
-
   dispatch-to-gentoo-openrc:
     uses: ./.github/workflows/gentoo-openrc-builder.yml
     with:
