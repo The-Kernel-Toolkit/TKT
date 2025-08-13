@@ -256,7 +256,7 @@ _gen_kern_name() {
        time env ${compiler_opt} make V=2 "${_force_all_threads}" "$@"
     elif [[ "$_compiler_name" =~ gcc ]]; then
        msg2 "Building kernel..."
-       time env ${compiler_opt} make "${_force_all_threads}" "$@"
+       time env ${compiler_opt} make "-j${_thread_num:-1}" "$@"
     elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
        msg2 "Building kernel..."
        time env ${compiler_opt} make V=2 "${_force_all_threads}" "$@"
