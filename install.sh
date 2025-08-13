@@ -107,7 +107,7 @@ _install_dependencies() {
   _base_deps="bash bc bison ccache cmake cpio curl flex git kmod lz4 make patchutils perl python3 python3-pip rsync sudo tar time wget zstd"
   _clang_deps="clang lld llvm"
   _deb_common_clang="clang-format clang-tidy clang-tools"
-  _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-14-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
+  _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-12-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
   _rpm_common="${_base_deps} dwarves gcc-c++ gawk hostname ncurses-devel libdw-devel libelf-devel libnuma-devel libopenssl-devel libudev-devel openssl openssl-devel python3-devel rpm-build rpmdevtools xz zstd"
   _fedora_common="${_rpm_common} elfutils-devel fedora-packager fedpkg pesign numactl-devel openssl-devel-engine perl-devel perl-generators qt5-qtbase-devel"
   _suse_common="${_rpm_common} awk kernel-source kernel-syms libqt5-qtbase-common-devel perl perl-ExtUtils-MakeMaker systemd-devel python311-devel python311-pip"
