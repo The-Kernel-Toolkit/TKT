@@ -394,7 +394,7 @@ _set_compiler(){
   if [ "$_compiler" = "llvm" ]; then
     export KCPPFLAGS
     export KCFLAGS
-    _compiler_name="-llvm"
+    _compiler_name="llvm"
     compiler_opt="CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=${_llvm_ias:-0}"
 
     # LTO Selection
@@ -450,7 +450,7 @@ _set_compiler(){
   else # GCC fallback
     export KCPPFLAGS
     export KCFLAGS
-    _compiler_name="-gcc"
+    _compiler_name="gcc"
     compiler_opt="CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip"
   fi
 
@@ -572,10 +572,74 @@ _tkg_initscript() {
 
   _set_compiler
 
-  if [ -n "$_custom_pkgbase" ]; then
-    printf "_custom_pkgbase=\"$_custom_pkgbase\"" >> "$_where"/TKT_CONFIG
+  if [ -z "$_kernel_localversion" ]; then
+      # Set the kernel name TKT style
+      _diet_tag=""
+      _modprobed_tag=""
+      _rt_tag=""
+      _compiler_name=""
+
+      [ "$_kernel_on_diet" = "true" ] && _diet_tag="diet"
+      [ "$_modprobeddb" = "true" ] && _modprobed_tag="modprobed"
+      [ "$_preempt_rt" = "1" ] && _rt_tag="rt"
+
+      if [ "$_compiler" = "llvm" ]; then
+        _compiler_name="-llvm"
+        _package_compiler="llvm"
+      else
+        _compiler_name="-gcc"
+        _package_compiler="gcc"
+      fi
+
+      # Start parts array
+      parts=( "tkt" )
+
+      # Detect distro and append to kernel name
+      shopt -s nocasematch
+      if [[ "$_distro" =~ Arch ]]; then
+        parts+=( "$(echo "$_distro" | tr '[:upper:]' '[:lower:]')" )
+      fi
+      shopt -u nocasematch
+
+      # Append tags to kernel name as needed
+      [ -n "$_diet_tag" ] && parts+=( "$_diet_tag" )
+      [ -n "$_modprobed_tag" ] && parts+=( "$_modprobed_tag" )
+      parts+=( "$_cpusched" )
+      [ -n "$_rt_tag" ] && parts+=( "$_rt_tag" )
+      parts+=( "$_package_compiler" )
+
+      _kernel_flavor=$(IFS=- ; echo "${parts[*]}")
+      {
+        echo "_diet_tag=$_diet_tag"
+        echo "_modprobed_tag=$_modprobed_tag"
+        echo "_rt_tag=$_rt_tag"
+        echo "_compiler_name=$_package_compiler"
+        echo "_cpusched=$_cpusched"
+        echo "_kernel_flavor=$_kernel_flavor"
+      } >> "$_where/TKT_CONFIG"
+  else
+      _kernel_flavor="tkt-${_kernel_localversion}"
   fi
 
+  # Setup kernel_subver variable
+  if [[ "$_sub" = rc* ]]; then
+      # if an RC version, subver will always be 0
+      _kernel_subver=0
+  else
+      _kernel_subver="${_sub}"
+  fi
+
+  # Generate kernel name with the required information
+  _kernelname="${_basekernel}.${_sub}-${_kernel_flavor}"
+  echo "_kernelname=$_kernelname" >> "$_where/TKT_CONFIG"
+
+  if [ -n "$_custom_pkgbase" ]; then
+      pkgbase="${_custom_pkgbase}"
+      echo "pkgbase=$pkgbase" >> "$_where/TKT_CONFIG"
+  else
+      pkgbase="linux-${_kernelname}"
+      echo "pkgbase=$pkgbase" >> "$_where/TKT_CONFIG"
+  fi
 }
 
 user_patcher() {
@@ -670,9 +734,6 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
   if [ "${_configfile}" = "config_hardened.x86_64" ] && [ "${_cpusched}" = "cfs" ]; then
     tkgpatch="$srcdir/0012-linux-hardened.patch"
     _msg="Using linux hardened patchset" && _tkg_patcher
-  else
-    tkgpatch="$srcdir/0001-add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by.patch"
-    _msg="Using Arch patches" && _tkg_patcher
   fi
 
   if [ -z $_debug ]; then
@@ -1040,22 +1101,23 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
   echo "_processor_opt='$_processor_opt'" >> "$_where"/TKT_CONFIG
 
   # modprobed-db
-
-  if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
-    if [[ "$_modprobeddb" = "true" && "$_kernel_on_diet" == "true" ]]; then
-      msg2 "_modprobeddb and _kernel_on_diet cannot be used together: it doesn't make sense, _kernel_on_diet uses our own modprobed list ;)"
+  if [[ "$_modprobeddb" == "true" || "$_kernel_on_diet" == "true" ]]; then
+    # Sanity check: can't use both
+    if [[ "$_modprobeddb" == "true" && "$_kernel_on_diet" == "true" ]]; then
+      msg2 "_modprobeddb and _kernel_on_diet cannot be used together: it doesn't make sense."
       exit 1
-    elif [[ -f "$_where/$_modprobeddb_db_path" ]]; then
-      _modprobeddb_db_path="$_where/$_modprobeddb_db_path"
-    elif [[ "$_modprobeddb" = "true" && "$_kernel_on_diet" == "false" ]]; then
-      msg2 "Using modprobed-db"
-      _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
-    elif [[ "$_modprobeddb" = "false" && "$_kernel_on_diet" == "true" ]]; then
+    fi
+
+    if [[ "$_kernel_on_diet" == "true" ]]; then
       msg2 "Using TKT diet db"
       _modprobeddb_db_path="$_where/kconfigs/$_basekernel/minimal-modprobed.db"
-    elif [ ! -f "$_modprobeddb_db_path" ]; then
-      msg2 "modprobed-db database not found"
-      exit 1
+
+    elif [[ "$_modprobeddb" == "true" ]]; then
+      msg2 "Using modprobed-db"
+      if [[ ! -f "$_modprobeddb_db_path" ]]; then
+        msg2 "modprobed-db database not found at $_modprobeddb_db_path"
+        exit 1
+      fi
     fi
   fi
 
@@ -1087,9 +1149,6 @@ echo "-${_custom_pkgbase}" > localversion.10-pkgrel
     _enable "DEFAULT_CUBIC"
     scripts/config --set-str DEFAULT_TCP_CONG "cubic"
   fi
-
-  #######
-
 
   if [ "${_cpusched}" = "muqss" ]; then
     # MuQSS default config
@@ -1791,7 +1850,7 @@ exit_cleanup() {
   rm -f "$_where"minimal_modprobed.db
 
   # Remove state tracker
-  rm -f "$_where"/TKT_CONFIG
+  #rm -f "$_where"/TKT_CONFIG
 
   # Remove ntsync rules file
   rm -f "$_where"/ntsync.rules

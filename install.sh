@@ -241,37 +241,26 @@ _gen_kern_name() {
 
   # Condense repeated make flags
   _make() {
-    # Modules
-    if [[ "$_modprobeddb" = "true" || "$_kernel_on_diet" == "true" ]]; then
-      if [[ "$_compiler_name" =~ llvm ]]; then
-        msg2 "Building diet kernel..."
-        time env ${compiler_opt} make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
-      elif [[ "$_compiler_name" =~ llvm && "$1" = "verbose" ]]; then
-        msg2 "Building diet kernel..."
-        time env ${compiler_opt} make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
-      elif [[ "$_compiler_name" =~ gcc ]]; then
-        msg2 "Building diet kernel..."
-        time env ${compiler_opt} make LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
-      elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
-        msg2 "Building diet kernel..."
-        time env ${compiler_opt} make V=2 LSMOD="$_modprobeddb_db_path localmodconfig ${_force_all_threads}" "$@"
-      fi
+    local verbose_opt=""
+
+    # Check for the "verbose" argument first.
+    # If it exists, set the option and remove it from the argument list ($@).
+    if [[ "$1" == "verbose" ]]; then
+      verbose_opt="V=2"
+      shift
     fi
 
-    # Kernels
-     if [[ "$_compiler_name" =~ llvm ]]; then
-       msg2 "Building kernel..."
-       time env ${compiler_opt} make "${_force_all_threads}" "$@"
-    elif [[ "$_compiler_name" =~ llvm && "$1" = "verbose" ]]; then
-       msg2 "Building kernel..."
-       time env ${compiler_opt} make V=2 "${_force_all_threads}" "$@"
-    elif [[ "$_compiler_name" =~ gcc ]]; then
-       msg2 "Building kernel..."
-       time env ${compiler_opt} make "-j${_thread_num:-1}" "$@"
-    elif [[ "$_compiler_name" =~ gcc && "$1" = "verbose" ]]; then
-       msg2 "Building kernel..."
-       time env ${compiler_opt} make V=2 "${_force_all_threads}" "$@"
-     fi
+    # Primary logic: Choose EITHER a diet kernel OR a generic kernel.
+    if [[ "$_modprobeddb" == "true" || "$_kernel_on_diet" == "true" ]]; then
+      msg2 "Building modprobed/diet kernel..."
+      # The 'localmodconfig' target is added for diet builds.
+      time env ${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig "${_force_all_threads}" "$@"
+    else
+      msg2 "Building kernel..."
+      # Generic build does not need the extra target or LSMOD variable.
+      time env ${compiler_opt} make ${verbose_opt} "${_force_all_threads}" "$@"
+    fi
+
   }
 
   # Copy winesync header if present
