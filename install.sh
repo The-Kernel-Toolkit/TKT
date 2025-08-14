@@ -103,11 +103,15 @@ _distro_prompt() {
   _distro="${_selected_value}"
 }
 
+_get_debian_version() (
+  source /etc/os-release
+  echo "$VERSION_ID"
+) # () instead of {} to avoid polluting the global namespace
+
 _install_dependencies() {
   _base_deps="bash bc bison ccache cmake cpio curl flex git kmod lz4 make patchutils perl python3 python3-pip rsync sudo tar time wget zstd"
   _clang_deps="clang lld llvm"
   _deb_common_clang="clang-format clang-tidy clang-tools"
-  _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-14-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
   _rpm_common="${_base_deps} dwarves gcc-c++ gawk hostname ncurses-devel libdw-devel libelf-devel libnuma-devel libopenssl-devel libudev-devel openssl openssl-devel python3-devel rpm-build rpmdevtools xz zstd"
   _fedora_common="${_rpm_common} elfutils-devel fedora-packager fedpkg pesign numactl-devel openssl-devel-engine perl-devel perl-generators qt5-qtbase-devel"
   _suse_common="${_rpm_common} awk kernel-source kernel-syms libqt5-qtbase-common-devel perl perl-ExtUtils-MakeMaker systemd-devel python311-devel python311-pip"
@@ -115,6 +119,13 @@ _install_dependencies() {
   _void_common="${_base_deps} base-devel docbook-xsl elfutils-devel fakeroot gcc gnupg graphviz liblz4-devel lz4 lzop m4 ncurses openssl-devel pahole patch pkg-config schedtool xtools xmlto xz"
 
   if [ "$_distro" = "Debian" ]; then
+    local _debian_version="$(_get_debian_version)"
+    if [[ "$_debian_version" -lt 13 ]]; then
+      _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-12-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
+    else
+      _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-14-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
+    fi
+
     sudo apt update
     msg2 "Installing dependencies for $_distro"
     if [[ "$_compiler_name" == *llvm* ]]; then
@@ -249,6 +260,7 @@ _gen_kern_name() {
       # Generic build does not need the extra target or LSMOD variable.
       time env ${compiler_opt} make ${verbose_opt} "${_force_all_threads}" "$@"
     fi
+
   }
 
   # Copy winesync header if present
