@@ -253,11 +253,11 @@ _gen_kern_name() {
     if [[ "$_modprobeddb" == "true" || "$_kernel_on_diet" == "true" ]]; then
       msg2 "Building modprobed/diet kernel..."
       # The 'localmodconfig' target is added for diet builds.
-      {time (${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig bzImage modules -j"${_thread_num}" "$@")} 3>&1 1>&2 2>&3
+      time ${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig bzImage modules -j"${_thread_num}" "$@"
     else
       msg2 "Building kernel..."
       # Generic build does not need the extra target or LSMOD variable.
-      {time (${compiler_opt} make ${verbose_opt} bzImage modules -j"${_thread_num}" "$@")} 3>&1 1>&2 2>&3
+      time ${compiler_opt} make ${verbose_opt} bzImage modules -j"${_thread_num}" "$@"
     fi
 
   }
