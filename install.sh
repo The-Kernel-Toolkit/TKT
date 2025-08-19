@@ -82,9 +82,9 @@ fi
 # Use distro-agnostic method to detect CPU threads
 cpu_threads=$(grep -c ^processor /proc/cpuinfo)
 if [ "$_force_all_threads" = "true" ]; then
-  _thread_num=$cpu_threads
+  _thread_num="$cpu_threads"
 else
-  _thread_num=$((cpu_threads / 2))
+  _thread_num="$((cpu_threads / 2))"
 fi
 
 # ccache
@@ -253,11 +253,11 @@ _gen_kern_name() {
     if [[ "$_modprobeddb" == "true" || "$_kernel_on_diet" == "true" ]]; then
       msg2 "Building modprobed/diet kernel..."
       # The 'localmodconfig' target is added for diet builds.
-      time env ${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig "${_thread_num}" "$@"
+      time env ${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig -j"${_thread_num}" "$@"
     else
       msg2 "Building kernel..."
       # Generic build does not need the extra target or LSMOD variable.
-      time env ${compiler_opt} make ${verbose_opt} "${_thread_num}" "$@"
+      time env ${compiler_opt} make ${verbose_opt} -j"${_thread_num}" "$@"
     fi
 
   }
@@ -714,7 +714,7 @@ EOF
     _gen_kern_name
     ./scripts/config --set-str LOCALVERSION "-${_kernel_flavor}"
     msg2 "Building kernel"
-    make -j ${_thread_num}
+    make -j "${_thread_num}"
     msg2 "Build successful"
 
     if [ "$_STRIP" = "true" ]; then
