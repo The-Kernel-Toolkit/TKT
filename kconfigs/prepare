@@ -1661,10 +1661,10 @@ CONFIG_DEBUG_INFO_BTF_MODULES=y\r
       cd "$_where/.." && git clone https://github.com/Frogging-Family/community-patches.git && cd "${_kernel_work_folder_abs}"
     fi
     _community_patches=($_community_patches)
-    mkdir -p "$_where"/linux"$_basever"-tkg-userpatches
+    mkdir -p "$_where"/linux"$_basever"-userpatches
     for _p in ${_community_patches[@]}; do
       if [ ! -e "$_where/linux$_basever-tkg-userpatches/$_p" ]; then
-        ln -s "$_where"/../community-patches/linux"$_basever"-tkg/$_p "$_where"/linux"$_basever"-tkg-userpatches/$_p
+        ln -s "$_where"/../community-patches/linux"$_basever"-tkg/$_p "$_where"/linux"$_basever"-userpatches/$_p
       else
         warning "Ignoring '$_p' community patch already present in the userpatches dir"
         _community_patches=(${_community_patches[@]/$_p})
@@ -1681,7 +1681,7 @@ CONFIG_DEBUG_INFO_BTF_MODULES=y\r
 
   # Community patches removal
   for _p in ${_community_patches[@]}; do
-    rm -f "$_where"/linux"$_basever"-tkg-userpatches/$_p
+    rm -f "$_where"/linux"$_basever"-userpatches/$_p
   done
 
   if [ "$_distro" = "Arch" ]; then
@@ -1850,7 +1850,7 @@ exit_cleanup() {
   rm -f "$_where"minimal_modprobed.db
 
   # Remove state tracker
-  #rm -f "$_where"/TKT_CONFIG
+  rm -f "$_where"/TKT_CONFIG
 
   # Remove ntsync rules file
   rm -f "$_where"/ntsync.rules

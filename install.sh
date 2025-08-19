@@ -79,13 +79,12 @@ elif [ -n "${CUSTOM_GCC_PATH}" ]; then
   PATH="${CUSTOM_GCC_PATH}/bin:${CUSTOM_GCC_PATH}/lib:${CUSTOM_GCC_PATH}/include:${PATH}"
 fi
 
+# Use distro-agnostic method to detect CPU threads
+cpu_threads=$(grep -c ^processor /proc/cpuinfo)
 if [ "$_force_all_threads" = "true" ]; then
-  _thread_num=`nproc`
+  _thread_num=$cpu_threads
 else
-  _thread_num=`expr \`nproc\` / 2`
-  if [ "$_thread_num" = "0" ]; then
-    _thread_num=1
-  fi
+  _thread_num=$((cpu_threads / 2))
 fi
 
 # ccache
@@ -254,11 +253,11 @@ _gen_kern_name() {
     if [[ "$_modprobeddb" == "true" || "$_kernel_on_diet" == "true" ]]; then
       msg2 "Building modprobed/diet kernel..."
       # The 'localmodconfig' target is added for diet builds.
-      time env ${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig "${_force_all_threads}" "$@"
+      time env ${compiler_opt} make ${verbose_opt} LSMOD="$_modprobeddb_db_path" localmodconfig "${_thread_num}" "$@"
     else
       msg2 "Building kernel..."
       # Generic build does not need the extra target or LSMOD variable.
-      time env ${compiler_opt} make ${verbose_opt} "${_force_all_threads}" "$@"
+      time env ${compiler_opt} make ${verbose_opt} "${_thread_num}" "$@"
     fi
 
   }
