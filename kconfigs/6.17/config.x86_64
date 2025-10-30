@@ -1,10 +1,6 @@
 #
 # Automatically generated file; DO NOT EDIT.
-<<<<<<<< HEAD:kconfigs/6.17/config.x86_64
 # Linux/x86 6.17.0-rc2 Kernel Configuration
-========
-# Linux/x86 6.1 Kernel Configuration
->>>>>>>> 50f6c14 (A lot of refactoring, time for clean rebase since stability seems in reach):kconfigs/6.1/config.x86_64
 #
 CONFIG_CC_VERSION_TEXT="clang version 22.0.0git"
 CONFIG_GCC_VERSION=0
