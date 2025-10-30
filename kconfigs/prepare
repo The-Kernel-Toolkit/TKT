@@ -385,6 +385,11 @@ _set_compiler(){
       _lto_mode="${_lto_mode_array[$_selected_index]}"
     fi
 
+    # Apply LTO setting
+    if [ "$_lto_mode" != "no" ]; then
+      compiler_opt="CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=${_llvm_ias:-0}"
+    fi
+
     # PGO Selection
     if [[ -z "$_pgo_config" || ! "$_pgo_config" =~ ^(false|generate|use)$ ]]; then
       plain "Enable Profile-Guided Optimization (PGO)?"
