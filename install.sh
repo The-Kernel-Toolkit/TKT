@@ -137,7 +137,6 @@ _install_dependencies() {
     else
       sudo apt install -y ${_deb_common}
     fi
-  fi
 
   elif [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Mint" ]; then
     sudo apt update
