@@ -113,6 +113,7 @@ _get_debian_version() (
 _install_dependencies() {
   _base_deps="bash bc bison ccache cmake cpio curl flex git kmod lz4 make patchutils perl python3 python3-pip rsync sudo tar time wget zstd"
   _clang_deps="clang lld llvm"
+  _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
   _deb_common_clang="clang-format clang-tidy clang-tools"
   _rpm_common="${_base_deps} dwarves gcc-c++ gawk hostname ncurses-devel libdw-devel libelf-devel libnuma-devel libopenssl-devel libudev-devel openssl openssl-devel python3-devel rpm-build rpmdevtools xz zstd"
   _fedora_common="${_rpm_common} elfutils-devel fedora-packager fedpkg pesign numactl-devel openssl-devel-engine perl-devel perl-generators qt5-qtbase-devel"
@@ -121,20 +122,22 @@ _install_dependencies() {
   _void_common="${_base_deps} base-devel docbook-xsl elfutils-devel fakeroot gcc gnupg graphviz liblz4-devel lz4 lzop m4 ncurses openssl-devel pahole patch pkg-config schedtool xtools xmlto xz"
 
   if [ "$_distro" = "Debian" ]; then
+    sudo apt update
     local _debian_version="$(_get_debian_version)"
+    msg2 "Installing dependencies for $_distro"
+
     if [[ "$_debian_version" -lt 13 ]]; then
-      _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-12-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
+      _deb_common=${_deb_common} libstdc++-12-dev
     else
-      _deb_common="${_base_deps} binutils binutils-dev binutils-gold build-essential debhelper device-tree-compiler dpkg-dev dwarves fakeroot g++ g++-multilib gcc gcc-multilib gnupg libc6-dev libc6-dev-i386 libdw-dev libelf-dev libncurses-dev libnuma-dev libperl-dev libssl-dev libstdc++-14-dev libudev-dev ninja-build python3-setuptools qtbase5-dev schedtool xz-utils"
+      _deb_common=${_deb_common} libstdc++-14-dev
     fi
 
-    sudo apt update
-    msg2 "Installing dependencies for $_distro"
     if [[ "$_compiler_name" == *llvm* ]]; then
       sudo apt install -y ${_deb_common} ${_deb_common_clang} ${_clang_deps}
     else
       sudo apt install -y ${_deb_common}
     fi
+  fi
 
   elif [ "$_distro" = "Ubuntu" ] || [ "$_distro" = "Mint" ]; then
     sudo apt update
@@ -425,10 +428,10 @@ main() {
   if [ "$_STRIP" = "true" ]; then
     if [[ "$_compiler_name" =~ llvm ]]; then
       echo "Stripping vmlinux..."
-      llvm-strip --strip-all-gnu $STRIP_STATIC "$builddir/vmlinux"
+      llvm-strip --strip-all-gnu $STRIP_STATIC "$_where/linux-src-git/vmlinux"
     elif [[ "$_compiler_name" =~ gcc ]]; then
       echo "Stripping vmlinux..."
-      strip --strip-all $STRIP_STATIC "$builddir/vmlinux"
+      strip --strip-all $STRIP_STATIC "$_where/linux-src-git/vmlinux"
     fi
   fi
 
@@ -456,10 +459,10 @@ main() {
   if [ "$_STRIP" = "true" ]; then
     if [[ "$_compiler_name" =~ llvm ]]; then
       echo "Stripping vmlinux..."
-      llvm-strip --strip-all-gnu $STRIP_STATIC "$builddir/vmlinux"
+      llvm-strip --strip-all-gnu $STRIP_STATIC "$_where/linux-src-git/vmlinux"
     elif [[ "$_compiler_name" =~ gcc ]]; then
       echo "Stripping vmlinux..."
-      strip --strip-all $STRIP_STATIC "$builddir/vmlinux"
+      strip --strip-all $STRIP_STATIC "$_where/linux-src-git/vmlinux"
     fi
   fi
 
@@ -486,10 +489,10 @@ main() {
       if [ "$_STRIP" = "true" ]; then
         if [[ "$_compiler_name" =~ llvm ]]; then
           echo "Stripping vmlinux..."
-          llvm-strip --strip-all-gnu $STRIP_STATIC "$builddir/vmlinux"
+          llvm-strip --strip-all-gnu $STRIP_STATIC "$_where/linux-src-git/vmlinux"
         elif [[ "$_compiler_name" =~ gcc ]]; then
           echo "Stripping vmlinux..."
-          strip --strip-all $STRIP_STATIC "$builddir/vmlinux"
+          strip --strip-all $STRIP_STATIC "$_where/linux-src-git/vmlinux"
         fi
       fi
 
@@ -644,10 +647,10 @@ EOF
       if [ "$_STRIP" = "true" ]; then
         if [[ "$_compiler_name" =~ llvm ]]; then
           echo "Stripping vmlinux..."
-          llvm-strip --strip-all-gnu $STRIP_STATIC "$builddir/vmlinux"
+          llvm-strip --strip-all-gnu $STRIP_STATIC "$_where/linux-src-git/vmlinux"
         elif [[ "$_compiler_name" =~ gcc ]]; then
           echo "Stripping vmlinux..."
-          strip --strip-all $STRIP_STATIC "$builddir/vmlinux"
+          strip --strip-all $STRIP_STATIC "$_where/linux-src-git/vmlinux"
         fi
       fi
 
@@ -754,10 +757,10 @@ EOF
       if [ "$_STRIP" = "true" ]; then
         if [[ "$_compiler_name" =~ llvm ]]; then
           echo "Stripping vmlinux..."
-          llvm-strip --strip-all-gnu $STRIP_STATIC "$builddir/vmlinux"
+          llvm-strip --strip-all-gnu $STRIP_STATIC "$_where/linux-src-git/vmlinux"
         elif [[ "$_compiler_name" =~ gcc ]]; then
           echo "Stripping vmlinux..."
-          strip --strip-all $STRIP_STATIC "$builddir/vmlinux"
+          strip --strip-all $STRIP_STATIC "$_where/linux-src-git/vmlinux"
         fi
       fi
 
