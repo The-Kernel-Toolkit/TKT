@@ -41,15 +41,15 @@ typeset -Ag _kernel_git_remotes=(
   ["kernel.org"]="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
   ["googlesource.com"]="https://kernel.googlesource.com/pub/scm/linux/kernel/git/stable/linux-stable"
   ["gregkh"]="https://github.com/gregkh/linux.git"
-  ["tkt"]="https://github.com/The-Kernel-Toolkit/linux.git"
+  ["torvalds"]="https://github.com/torvalds/linux.git"
 )
 
 _git_remote_names=( "${!_kernel_git_remotes[@]}" )
 
-# fill with our linx repo link if empty
+# fill with Torvalds Linux repo link if empty
 if [[ -z "$_git_mirror" ]]; then
-  msg2 "using default TKT git mirror"
-  _git_mirror="${_kernel_git_remotes['tkt']}"
+  msg2 "using the only proper Linux source tree, Linus Torvalds"
+  _git_mirror="${_kernel_git_remotes['torvalds']}"
 fi
 
 # if alias, get actual link from map _kernel_git_remotes
