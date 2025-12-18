@@ -159,7 +159,9 @@ build() {
   source "$_where"/TKT_CONFIG
   cd "$_kernel_work_folder_abs"
 
-  # Use user specified compiler path if set
+  # -------------------------
+  # Compiler path handling
+  # -------------------------
   if [[ "$_compiler" =~ llvm ]] && [ -n "${CUSTOM_LLVM_PATH}" ]; then
       _compiler_path="${CUSTOM_LLVM_PATH}/bin:${PATH}"
   elif [[ "$_compiler" =~ gcc ]] && [ -n "${CUSTOM_GCC_PATH}" ]; then
@@ -169,7 +171,9 @@ build() {
     exit 1
   fi
 
-  # Compute make jobs argument
+  # -------------------------
+  # Job scheduling
+  # -------------------------
   local _make_jobs_arg
   if [ "$_force_all_threads" = "true" ]; then
     _make_jobs_arg="-j$(nproc)"
@@ -177,7 +181,9 @@ build() {
     _make_jobs_arg="${MAKEFLAGS}"
   fi
 
+  # -------------------------
   # ccache
+  # -------------------------
   if [ "$_noccache" != "true" ] && pacman -Qq ccache &> /dev/null; then
     export PATH="/usr/lib/ccache/bin/:$PATH"
     export CCACHE_SLOPPINESS="file_macro,locale,time_macros"
@@ -185,13 +191,65 @@ build() {
     msg2 'ccache was found and will be used'
   fi
 
-  # document the TKT variables
+  # -------------------------
+  # Document TKT variables
+  # -------------------------
   declare -p | cut -d ' ' -f 3 | grep -P '^_(?!=|EXT_CONFIG_PATH|where|path)' > "${srcdir}/customization-full.cfg"
 
-  # remove -O2 flag and place user optimization flag
+  # -------------------------
+  # Optimization flags
+  # -------------------------
   CFLAGS=${CFLAGS/-O2/}
   CFLAGS+=" ${_compileropt}"
 
+  # -------------------------
+  # Propeller + PGO + AutoAFDO
+  # -------------------------
+
+  # Base LLVM flags container
+  export LLVM_FLAGS=""
+  export LDFLAGS+=""
+
+  # --- Profile Generation Mode ---
+  if [[ "$_pgo_generate" == "true" ]]; then
+      msg2 "Kernel build in **PGO generation** mode"
+      export LLVM_PROFDIR="${srcdir}/pgo-profiles"
+      mkdir -p "$LLVM_PROFDIR"
+      LLVM_FLAGS+=" -fprofile-generate=${LLVM_PROFDIR}"
+  fi
+
+  # --- Profile Use Mode ---
+  if [[ "$_pgo_use" == "true" ]]; then
+      msg2 "Kernel build in **PGO USE** mode"
+      LLVM_FLAGS+=" -fprofile-use=${_pgo_profile_path} -fprofile-correction"
+  fi
+
+  # --- AutoFDO / AutoFDR ---
+  if [[ "$_auto_afdo" == "true" ]]; then
+      msg2 "Enabling **AutoFDO / AutoFDR**"
+      LLVM_FLAGS+=" -fauto-profile=${_auto_fdo_profile}"
+  fi
+
+  # --- Propeller: instrumentation ---
+  if [[ "$_propeller_generate" == "true" ]]; then
+      msg2 "Building with **Propeller instrumentation**"
+      LLVM_FLAGS+=" -Wl,--emit-relocs -Wl,-z,notext"
+  fi
+
+  # --- Propeller: optimized layout ---
+  if [[ "$_propeller_use" == "true" ]]; then
+      msg2 "Applying **Propeller optimized layout**"
+      LDFLAGS+=" -Wl,--propeller=${_propeller_profile}"
+  fi
+
+  # Inject flags into build env
+  export KCFLAGS+="$LLVM_FLAGS"
+  export KCPPFLAGS+="$LLVM_FLAGS"
+  export LDFLAGS
+
+  # -------------------------
+  # schedtool niceness
+  # -------------------------
   if pacman -Qq schedtool &> /dev/null; then
     msg2 "Using schedtool to set scheduling policy for the build."
     local _pid="$$"
@@ -199,7 +257,9 @@ build() {
     command ionice -n 1 -p "$_pid" || :
   fi
 
-  # --- Build execution ---
+  # -------------------------
+  # Diet / modprobed kernel
+  # -------------------------
   local diet_args=""
   local diet_target=""
 
@@ -211,6 +271,9 @@ build() {
     msg2 "Building generic kernel with ${_compiler^^}..."
   fi
 
+  # -------------------------
+  # Final build
+  # -------------------------
   {
     time (env ${compiler_opt} make "${_make_jobs_arg}" ${diet_args} ${diet_target})
   } 3>&1 1>&2 2>&3
@@ -444,5 +507,9 @@ hackbase
 package_${pkgbase}-headers() {
 hackheaders
 }
-_mkinitcpio
+
+if [ "$_ukify" = "true" ]; then
+  _mkinitcpio
+fi
+
 EOF

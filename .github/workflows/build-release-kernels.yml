@@ -23,7 +23,7 @@ jobs:
         run: |
           get_latest_kernel() {
             git -c 'versionsort.suffix=-' \
-            ls-remote --exit-code --refs --sort='version:refname' --tags https://github.com/TKT/linux.git '*.*' \
+            ls-remote --exit-code --refs --sort='version:refname' --tags https://github.com/torvalds/linux.git '*.*' \
             | cut --delimiter='/' --fields=3 | grep "$1" | tail -n 1
           }
           grep "_current_kernels=(" kconfigs/prepare > current_kernels.txt

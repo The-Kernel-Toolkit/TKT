@@ -350,7 +350,7 @@ _set_cpu_scheduler() {
 _set_compiler(){
   if ! [[ "$_compiler" =~ ^(gcc|llvm)$ ]]; then
     if [ -n "$_compiler" ] && [ "$_nofallback" = "true" ]; then
-      msg2 "Compiler \" $_compiler \" not recognized, exiting... "
+      msg2 "Compiler \"$_compiler\" not recognized, exiting..."
       exit 1
     else
       plain "Which compiler do you want to use?"
@@ -367,17 +367,23 @@ _set_compiler(){
     export KCPPFLAGS
     export KCFLAGS
     _compiler_name="llvm"
-    compiler_opt="CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=${_llvm_ias:-0}"
 
+    compiler_opt="CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld \
+                  RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar \
+                  AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy \
+                  OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=${_llvm_ias:-0}"
+
+    # -----------------------------
     # LTO Selection
+    # -----------------------------
     if [[ -z "$_lto_mode" || ! "$_lto_mode" =~ ^(no|thin|full)$ ]]; then
-      plain "Would you like to enable Clang Link Time Optimizations (LTO)?"
-      warning "Experimental feature! May cause boot failures."
+      plain "Enable Clang Link Time Optimizations (LTO)?"
+      warning "Experimental feature!"
 
       _lto_prompt_array=(
         "No: do not enable LTO"
-        "Full: uses 1 thread for Linking, slow and uses more memory"
-        "Thin: uses multiple threads, faster, uses less memory"
+        "Full: 1-thread link, slow, max optimization"
+        "Thin: multi-threaded, faster, recommended"
       )
       _lto_mode_array=("no" "full" "thin")
       _default_index="0"
@@ -385,20 +391,22 @@ _set_compiler(){
       _lto_mode="${_lto_mode_array[$_selected_index]}"
     fi
 
-    # Apply LTO setting
+    # Kernel Kconfig controls the actual -flto semantics; just record choice.
     if [ "$_lto_mode" != "no" ]; then
-      compiler_opt="CC=clang CPP=clang-cpp CXX=clang++ LD=ld.lld RANLIB=llvm-ranlib STRIP=llvm-strip AR=llvm-ar AS=llvm-as NM=llvm-nm OBJCOPY=llvm-objcopy OBJDUMP=llvm-objdump LLVM=1 LLVM_IAS=${_llvm_ias:-0}"
+      msg2 "Using Clang LTO: $_lto_mode"
     fi
 
+    # -----------------------------
     # PGO Selection
+    # -----------------------------
     if [[ -z "$_pgo_config" || ! "$_pgo_config" =~ ^(false|generate|use)$ ]]; then
       plain "Enable Profile-Guided Optimization (PGO)?"
-      warning "Generating requires booting into the kernel to gather data."
+      warning "Generate → boot kernel → gather workload data → rebuild."
 
       _pgo_prompt_array=(
         "False: do not enable PGO"
-        "Generate: build the kernel to collect profiling data"
-        "Use: use profiling data to optimize the kernel"
+        "Generate: build to collect profiling data"
+        "Use: use existing profiling data"
       )
       _pgo_mode_array=("false" "generate" "use")
       _default_index="0"
@@ -406,27 +414,114 @@ _set_compiler(){
       _pgo_config="${_pgo_mode_array[$_selected_index]}"
     fi
 
-    # Set PGO Flags
+    _pgo_dir="${_pgo_profile_dir:-/var/lib/pgo}"
+
     if [ "$_pgo_config" = "generate" ]; then
-      msg2 "Enabling PGO: Generating profiling data"
-      export KCFLAGS="${KCFLAGS} -fprofile-generate=${_pgo_profile_dir:-/var/lib/pgo}"
+      msg2 "Enabling PGO (generate)"
+      mkdir -p "$_pgo_dir"
+      KCFLAGS+=" -fprofile-generate=${_pgo_dir}"
+      # Helpful defaults for profile generation: preserve debug info and frame pointers.
+      KCFLAGS+=" -g -fno-omit-frame-pointer"
     elif [ "$_pgo_config" = "use" ]; then
-      if [ ! -d "${_pgo_profile_dir:-/var/lib/pgo}" ]; then
-        error "Profiling data directory ${_pgo_profile_dir:-/var/lib/pgo} does not exist!"
+      if [ ! -d "$_pgo_dir" ]; then
+        error "PGO directory $_pgo_dir does not exist!"
         exit 1
       fi
-      msg2 "Enabling PGO: Using profiling data"
-      export KCFLAGS="${KCFLAGS} -fprofile-use=${_pgo_profile_dir:-/var/lib/pgo} -fprofile-correction"
+      msg2 "Enabling PGO (use)"
+      KCFLAGS+=" -fprofile-use=${_pgo_dir} -fprofile-correction"
     fi
 
-  else # GCC fallback
+    # -----------------------------
+    # AutoFDO Selection (perf-based)
+    # -----------------------------
+    # Allow: false | generate | use
+    if [[ -z "$_afd_config" || ! "$_afd_config" =~ ^(false|generate|use)$ ]]; then
+      plain "Enable AutoFDO (perf-based profile)?"
+      warning "Generate: build kernel tuned for perf sampling. Use: apply converted AFDO profile."
+
+      _afd_prompt_array=(
+        "False: disable AutoFDO"
+        "Generate: build kernel suitable for perf sampling (generate perf data)"
+        "Use: apply AutoFDO profile during build"
+      )
+      _afd_mode_array=("false" "generate" "use")
+      _default_index="0"
+      _prompt_from_array "${_afd_prompt_array[@]}"
+      _afd_config="${_afd_mode_array[$_selected_index]}"
+    fi
+
+    _afd_dir="${_afd_profile_dir:-/var/lib/pgo/afdo}"
+    _afd_file="${_afd_profile:-${_afd_dir}/kernel.afdo}"
+
+    if [ "$_afd_config" = "generate" ]; then
+      msg2 "Enabling AutoFDO (generate): preparing kernel for perf sampling"
+      mkdir -p "$_afd_dir"
+      # For the generate pass, prefer builds that retain symbol/frame info for better profile quality:
+      KCFLAGS+=" -g -fno-omit-frame-pointer -fno-optimize-sibling-calls"
+      # Keep unstripped vmlinux for offline conversion if your build system strips by default.
+      # We set a marker variable so other script parts can enforce CONFIG_FRAME_POINTER or keep vmlinux.
+      export _AFDO_GENERATE_MARKER="true"
+    elif [ "$_afd_config" = "use" ]; then
+      if [ ! -f "$_afd_file" ]; then
+        error "AutoFDO profile $_afd_file not found!"
+        exit 1
+      fi
+      msg2 "Enabling AutoFDO (use)"
+      KCFLAGS+=" -fauto-profile=${_afd_file}"
+    fi
+
+    # -----------------------------
+    # Propeller Selection (block layout)
+    # -----------------------------
+    if [[ -z "$_prop_config" || ! "$_prop_config" =~ ^(false|generate|use)$ ]]; then
+      plain "Enable LLVM Propeller (block layout optimization)?"
+      warning "Generate: instrument to create layout profile. Use: apply layout to final build."
+
+      _prop_prompt_array=(
+        "False: disable Propeller"
+        "Generate: instrument kernel for Propeller profile collection"
+        "Use: apply Propeller optimized layout"
+      )
+      _prop_mode_array=("false" "generate" "use")
+      _default_index="0"
+      _prompt_from_array "${_prop_prompt_array[@]}"
+      _prop_config="${_prop_mode_array[$_selected_index]}"
+    fi
+
+    _prop_dir="${_propeller_profile_dir:-/var/lib/pgo/propeller}"
+    _prop_profile="${_prop_profile:-${_prop_dir}/layout.prof}"
+
+    if [ "$_prop_config" = "generate" ]; then
+      msg2 "Enabling Propeller (generate / instrumentation)"
+      mkdir -p "$_prop_dir"
+      # Instrument for Propeller and instruct basic-block sectioning so layout tools can map blocks.
+      KCFLAGS+=" -fpropeller-instrument -fbasic-block-sections=all -g -fno-omit-frame-pointer"
+      # Emit relocations is helpful when generating layout data on some toolchains:
+      KCFLAGS+=" -Wl,--emit-relocs"
+    elif [ "$_prop_config" = "use" ]; then
+      if [ ! -f "$_prop_profile" ]; then
+        error "Propeller profile $_prop_profile missing!"
+        exit 1
+      fi
+      msg2 "Using Propeller optimized layout"
+      KCFLAGS+=" -fpropeller-profile=${_prop_profile}"
+    fi
+
+  else
+    # -----------------------------
+    # GCC fallback
+    # -----------------------------
     export KCPPFLAGS
     export KCFLAGS
     _compiler_name="gcc"
-    compiler_opt="CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf RANLIB=ranlib STRIP=strip"
+    compiler_opt="CC=gcc CXX=g++ LD=ld.bfd HOSTCC=gcc HOSTLD=ld.bfd \
+                  AR=ar NM=nm OBJCOPY=objcopy OBJDUMP=objdump READELF=readelf \
+                  RANLIB=ranlib STRIP=strip"
   fi
 
-  printf "_compiler_name='$_compiler_name'\ncompiler_opt='$compiler_opt'" >> "$_where"/TKT_CONFIG
+  # Persist chosen compiler details for subsequent steps
+  printf "_compiler_name='%s'\ncompiler_opt='%s'\n_pgo_config='%s'\n_pgo_profile_dir='%s'\n_afd_config='%s'\n_afd_profile='%s'\n_prop_config='%s'\n_prop_profile='%s'\n" \
+    "$_compiler_name" "$compiler_opt" "$_pgo_config" "${_pgo_dir}" "$_afd_config" "${_afd_file}" "$_prop_config" "${_prop_profile}" >> "$_where"/TKT_CONFIG
 }
 
 _define_kernel_abs_paths() {
